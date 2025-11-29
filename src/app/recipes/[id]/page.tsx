@@ -1,16 +1,18 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import React, { useEffect, useState, Suspense } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { geminiAgent, RecipeDetails } from "@/lib/gemini";
 import { ArrowLeft, Clock, Users, ChefHat, Loader2, Play, AlertCircle } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { recipeCache } from "@/lib/cache";
 
-export default function RecipeDetailPage() {
+function RecipeDetailContent() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const id = params.id as string;
+    const language = searchParams.get("lang") || "en";
 
     const [recipe, setRecipe] = useState<RecipeDetails | null>(null);
     const [loading, setLoading] = useState(true);
@@ -31,9 +33,14 @@ export default function RecipeDetailPage() {
                 }
 
                 // Fetch from API if not cached
-                // For now, we'll use the ID as the title since we don't have a way to pass the title
-                // In a real app, you'd store recipes or pass the title via query params
-                const details = await geminiAgent.getRecipeDetails(id, decodeURIComponent(id));
+                const response = await fetch(`/api/recipes/${id}?lang=${language}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.message || 'Failed to fetch recipe');
+                }
+                
+                const details = data.recipe;
                 setRecipe(details);
                 
                 // Cache the details
@@ -48,7 +55,7 @@ export default function RecipeDetailPage() {
         if (id) {
             fetchRecipe();
         }
-    }, [id]);
+    }, [id, language]);
 
     if (loading) {
         return (
@@ -201,5 +208,23 @@ export default function RecipeDetailPage() {
 
             <BottomNav />
         </div>
+    );
+}
+
+export default function RecipeDetailPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted flex items-center justify-center">
+                <div className="flex flex-col items-center space-y-4">
+                    <div className="relative flex items-center justify-center w-16 h-16">
+                        <Loader2 size={40} className="animate-spin text-primary absolute" strokeWidth={2.5} />
+                        <ChefHat size={20} className="text-primary relative z-10" strokeWidth={2} />
+                    </div>
+                    <p className="text-text-medium">Loading recipe...</p>
+                </div>
+            </div>
+        }>
+            <RecipeDetailContent />
+        </Suspense>
     );
 }

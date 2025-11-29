@@ -59,6 +59,21 @@ export default function PrepareRecipePage() {
                 setRecipe(cached);
                 setLoading(false);
                 await analyzeRequiredTools(cached);
+                
+                // Log prepare_started interaction
+                try {
+                    await fetch('/api/recipes/interaction', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            recipeId: id,
+                            interactionType: 'prepare_started',
+                            source: 'prepare_page',
+                        }),
+                    });
+                } catch (error) {
+                    console.error('Failed to log interaction:', error);
+                }
             } else {
                 router.push(`/recipes/${id}`);
             }
@@ -172,13 +187,15 @@ export default function PrepareRecipePage() {
         try {
             const identifiedTools = await geminiAgent.identifyKitchenTools(capturedImage);
             
-            // Add identified tools to selected set
-            const newSelected = new Set(selectedTools);
+            // Replace selected tools with ONLY the identified tools (don't keep previously selected)
+            const newSelected = new Set<string>();
             identifiedTools.forEach(toolId => {
                 if (commonTools.find(t => t.id === toolId)) {
                     newSelected.add(toolId);
                 }
             });
+            
+            // Update selected tools to only include detected items
             setSelectedTools(newSelected);
             
             closeCamera();

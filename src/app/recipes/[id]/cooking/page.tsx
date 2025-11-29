@@ -40,9 +40,10 @@ export default function CookingQuestPage() {
     const [selectedStep, setSelectedStep] = useState<number | string | null>(null);
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [adjustmentMessage, setAdjustmentMessage] = useState<string | null>(null);
+    const [cookingSessionId, setCookingSessionId] = useState<string | null>(null);
 
     useEffect(() => {
-        const loadRecipe = () => {
+        const loadRecipe = async () => {
             const cached = recipeCache.getRecipeDetails(id);
             if (cached) {
                 setRecipe(cached);
@@ -61,6 +62,26 @@ export default function CookingQuestPage() {
                     completed: false,
                 }));
                 setStepStatuses(statuses);
+                
+                // Create cooking session
+                try {
+                    const response = await fetch('/api/cooking/session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            recipeId: id,
+                            originalSteps: cached.steps,
+                        }),
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        setCookingSessionId(data.session.id);
+                    }
+                } catch (error) {
+                    console.error('Failed to create cooking session:', error);
+                }
+                
                 setLoading(false);
             } else {
                 router.push(`/recipes/${id}`);
@@ -153,6 +174,14 @@ export default function CookingQuestPage() {
             // Parse validation result to determine if it passed
             const passed = validationResult.toLowerCase().includes("pass");
             const failed = validationResult.toLowerCase().includes("fail");
+            
+            // Determine validation status and confidence
+            let validationStatus = 'uncertain';
+            if (passed) validationStatus = 'pass';
+            if (failed) validationStatus = 'fail';
+            
+            const confidenceMatch = validationResult.match(/Confidence.*?:\s*(High|Medium|Low)/i);
+            const confidenceLevel = confidenceMatch ? confidenceMatch[1].toLowerCase() : 'medium';
 
             setStepStatuses((prev) =>
                 prev.map((s) =>
@@ -166,6 +195,28 @@ export default function CookingQuestPage() {
                         : s
                 )
             );
+
+            // Log validation to database
+            if (cookingSessionId) {
+                try {
+                    await fetch('/api/cooking/validation', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sessionId: cookingSessionId,
+                            recipeId: id,
+                            stepNumber: selectedStep,
+                            stepInstruction: step.instruction,
+                            validationResult,
+                            validationStatus,
+                            confidenceLevel,
+                            imageUrl: null, // Could upload to storage if needed
+                        }),
+                    });
+                } catch (error) {
+                    console.error('Failed to log validation:', error);
+                }
+            }
 
             // If validation failed, check if task list needs adjustment
             if (failed) {
@@ -272,6 +323,32 @@ export default function CookingQuestPage() {
     const completedSteps = stepStatuses.filter((s) => s.completed).length;
     const totalSteps = stepStatuses.length;
     const progress = (completedSteps / totalSteps) * 100;
+
+    // Mark session as completed when all steps are done
+    useEffect(() => {
+        if (completedSteps === totalSteps && totalSteps > 0 && cookingSessionId) {
+            const markComplete = async () => {
+                try {
+                    await fetch('/api/cooking/session', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sessionId: cookingSessionId,
+                            updates: {
+                                session_status: 'completed',
+                                completed_at: new Date().toISOString(),
+                                current_step: totalSteps,
+                                total_steps: totalSteps,
+                            },
+                        }),
+                    });
+                } catch (error) {
+                    console.error('Failed to mark session complete:', error);
+                }
+            };
+            markComplete();
+        }
+    }, [completedSteps, totalSteps, cookingSessionId]);
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted pb-8">

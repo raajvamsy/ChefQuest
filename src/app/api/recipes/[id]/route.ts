@@ -7,6 +7,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const { searchParams } = new URL(request.url)
+  const language = searchParams.get('lang') || 'en'
 
   try {
     // 1. Try to get recipe from database
@@ -29,7 +31,7 @@ export async function GET(
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ')
 
-    const recipeDetails = await geminiAgent.getRecipeDetails(id, title)
+    const recipeDetails = await geminiAgent.getRecipeDetails(id, title, language)
 
     // 3. Store in database
     await supabase.from('recipes').upsert({

@@ -30,11 +30,11 @@ export const recipeCache = {
   /**
    * Get cached recipes for a search query
    */
-  getRecipes(query: string, diet?: string): Recipe[] | null {
+  getRecipes(query: string, diet?: string, language?: string): Recipe[] | null {
     if (typeof window === "undefined") return null;
 
     try {
-      const cacheKey = this.getRecipesCacheKey(query, diet);
+      const cacheKey = this.getRecipesCacheKey(query, diet, language);
       const cached = sessionStorage.getItem(RECIPES_CACHE_KEY);
       
       if (!cached) return null;
@@ -60,11 +60,11 @@ export const recipeCache = {
   /**
    * Set cached recipes for a search query
    */
-  setRecipes(query: string, diet: string | undefined, recipes: Recipe[], page: number = 1): void {
+  setRecipes(query: string, diet: string | undefined, recipes: Recipe[], page: number = 1, language?: string): void {
     if (typeof window === "undefined") return;
 
     try {
-      const cacheKey = this.getRecipesCacheKey(query, diet);
+      const cacheKey = this.getRecipesCacheKey(query, diet, language);
       const cached = sessionStorage.getItem(RECIPES_CACHE_KEY);
       const cache: RecipesCache = cached ? JSON.parse(cached) : {};
 
@@ -83,11 +83,11 @@ export const recipeCache = {
   /**
    * Get the current page number from cache
    */
-  getRecipesPage(query: string, diet?: string): number {
+  getRecipesPage(query: string, diet?: string, language?: string): number {
     if (typeof window === "undefined") return 1;
 
     try {
-      const cacheKey = this.getRecipesCacheKey(query, diet);
+      const cacheKey = this.getRecipesCacheKey(query, diet, language);
       const cached = sessionStorage.getItem(RECIPES_CACHE_KEY);
       
       if (!cached) return 1;
@@ -168,8 +168,8 @@ export const recipeCache = {
   /**
    * Generate cache key for recipes search
    */
-  getRecipesCacheKey(query: string, diet?: string): string {
-    return `${query.toLowerCase()}_${diet || "all"}`;
+  getRecipesCacheKey(query: string, diet?: string, language?: string): string {
+    return `${query.toLowerCase()}_${diet || "all"}_${language || "en"}`;
   },
 };
 

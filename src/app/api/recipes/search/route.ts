@@ -6,6 +6,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const query = searchParams.get('q')
   const diet = searchParams.get('diet')
+  const language = searchParams.get('lang') || 'en'
   const usePopular = searchParams.get('usePopular') !== 'false'
   
   if (!query) {
@@ -56,7 +57,7 @@ export async function GET(request: Request) {
     }
 
     // 3. Generate new recipes with Gemini
-    const generatedRecipes = await geminiAgent.searchRecipes(query, diet || undefined, 5)
+    const generatedRecipes = await geminiAgent.searchRecipes(query, diet || undefined, 6, language)
     const responseTime = Date.now() - startTime
 
     // 4. Store generated recipes in database

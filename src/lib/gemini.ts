@@ -100,11 +100,12 @@ export class GeminiAgent {
      * @param query User's search query (e.g., "pasta", "healthy dinner")
      * @param diet Optional dietary preference (e.g., "veg", "non-veg")
      * @param count Number of recipes to return (default: 5)
+     * @param language Language code for the response (default: "en")
      * @returns Array of recipe objects
      */
-    async searchRecipes(query: string, diet?: string, count: number = 5): Promise<Recipe[]> {
+    async searchRecipes(query: string, diet?: string, count: number = 5, language: string = "en"): Promise<Recipe[]> {
         try {
-            const prompt = RECIPE_SEARCH_PROMPT(query, diet, count);
+            const prompt = RECIPE_SEARCH_PROMPT(query, diet, count, language);
 
             const result = await this.model.generateContent(prompt);
             const response = await result.response;
@@ -120,11 +121,12 @@ export class GeminiAgent {
      * Gets detailed recipe information.
      * @param id Recipe ID
      * @param title Recipe title
+     * @param language Language code for the response (default: "en")
      * @returns Detailed recipe object
      */
-    async getRecipeDetails(id: string, title: string): Promise<RecipeDetails> {
+    async getRecipeDetails(id: string, title: string, language: string = "en"): Promise<RecipeDetails> {
         try {
-            const prompt = RECIPE_DETAILS_PROMPT(title);
+            const prompt = RECIPE_DETAILS_PROMPT(title, language);
 
             const detailsModel = this.genAI.getGenerativeModel({
                 model: MODEL_NAME,

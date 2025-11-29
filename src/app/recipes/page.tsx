@@ -12,6 +12,7 @@ function RecipesPageContent() {
     const router = useRouter();
     const query = searchParams.get("q");
     const diet = searchParams.get("diet");
+    const language = searchParams.get("lang") || "en";
 
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [loading, setLoading] = useState(true);
@@ -28,7 +29,7 @@ function RecipesPageContent() {
         }
 
         // Prevent double fetching in React Strict Mode
-        const cacheKey = `${query}-${diet}`;
+        const cacheKey = `${query}-${diet}-${language}`;
         if (fetchedQuery.current === cacheKey) {
             return;
         }
@@ -40,21 +41,28 @@ function RecipesPageContent() {
                 setError("");
                 
                 // Check cache first
-                const cached = recipeCache.getRecipes(query, diet || undefined);
+                const cached = recipeCache.getRecipes(query, diet || undefined, language);
                 if (cached && cached.length > 0) {
                     setRecipes(cached);
-                    setCurrentPage(recipeCache.getRecipesPage(query, diet || undefined));
+                    setCurrentPage(recipeCache.getRecipesPage(query, diet || undefined, language));
                     setLoading(false);
                     return;
                 }
 
                 // Fetch from API if not cached
-                const results = await geminiAgent.searchRecipes(query, diet || undefined, 6);
+                const response = await fetch(`/api/recipes/search?q=${encodeURIComponent(query)}&diet=${diet || 'veg'}&lang=${language}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.message || 'Failed to fetch recipes');
+                }
+                
+                const results = data.recipes || [];
                 setRecipes(results);
                 setCurrentPage(1);
                 
                 // Cache the results
-                recipeCache.setRecipes(query, diet || undefined, results, 1);
+                recipeCache.setRecipes(query, diet || undefined, results, 1, language);
             } catch (err) {
                 setError("Failed to fetch recipes. Please try again.");
             } finally {
@@ -63,7 +71,7 @@ function RecipesPageContent() {
         };
 
         fetchRecipes();
-    }, [query, diet]);
+    }, [query, diet, language]);
 
     const handleLoadMore = async () => {
         if (!query || loadingMore) return;
@@ -73,7 +81,14 @@ function RecipesPageContent() {
             setError("");
 
             // Request more recipes
-            const moreRecipes = await geminiAgent.searchRecipes(query, diet || undefined, 5);
+            const response = await fetch(`/api/recipes/search?q=${encodeURIComponent(query)}&diet=${diet || 'veg'}&lang=${language}&usePopular=false`);
+            const data = await response.json();
+            
+            if (data.error || !data.recipes) {
+                throw new Error(data.message || 'Failed to load more recipes');
+            }
+            
+            const moreRecipes = data.recipes;
             
             if (moreRecipes.length === 0) {
                 setHasMore(false);
@@ -97,7 +112,7 @@ function RecipesPageContent() {
             setCurrentPage(newPage);
 
             // Update cache with new recipes
-            recipeCache.setRecipes(query, diet || undefined, updatedRecipes, newPage);
+            recipeCache.setRecipes(query, diet || undefined, updatedRecipes, newPage, language);
         } catch (err) {
             setError("Failed to load more recipes. Please try again.");
         } finally {
@@ -171,7 +186,7 @@ function RecipesPageContent() {
                             Found {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"}
                         </p>
                         {recipes.map((recipe) => (
-                            <RecipeCard key={recipe.id} recipe={recipe} />
+                            <RecipeCard key={recipe.id} recipe={recipe} language={language} />
                         ))}
                         
                         {/* Load More Button */}
@@ -232,12 +247,12 @@ export default function RecipesPage() {
     );
 }
 
-function RecipeCard({ recipe }: { recipe: Recipe }) {
+function RecipeCard({ recipe, language }: { recipe: Recipe, language?: string }) {
     const router = useRouter();
 
     return (
         <div
-            onClick={() => router.push(`/recipes/${recipe.id}`)}
+            onClick={() => router.push(`/recipes/${recipe.id}${language ? `?lang=${language}` : ''}`)}
             className="bg-white border border-border-gray/30 rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.98]"
         >
             <div className="p-6 space-y-4">

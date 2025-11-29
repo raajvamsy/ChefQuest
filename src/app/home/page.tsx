@@ -2,18 +2,42 @@
 
 import BottomNav from "@/components/BottomNav";
 import InstallPWA from "@/components/InstallPWA";
-import { Search, Sparkles, ChefHat, Zap } from "lucide-react";
+import { Search, Sparkles, ChefHat, Zap, Languages } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+
+const LANGUAGES = [
+  { code: "en", name: "English" },
+  { code: "hi", name: "Hindi (हिंदी)" },
+  { code: "ta", name: "Tamil (தமிழ்)" },
+  { code: "te", name: "Telugu (తెలుగు)" },
+  { code: "mr", name: "Marathi (मराठी)" },
+  { code: "bn", name: "Bengali (বাংলা)" },
+  { code: "gu", name: "Gujarati (ગુજરાતી)" },
+  { code: "kn", name: "Kannada (ಕನ್ನಡ)" },
+  { code: "ml", name: "Malayalam (മലയാളം)" },
+  { code: "pa", name: "Punjabi (ਪੰਜਾਬੀ)" },
+  { code: "es", name: "Spanish (Español)" },
+  { code: "fr", name: "French (Français)" },
+  { code: "de", name: "German (Deutsch)" },
+  { code: "it", name: "Italian (Italiano)" },
+  { code: "pt", name: "Portuguese (Português)" },
+  { code: "zh", name: "Chinese (中文)" },
+  { code: "ja", name: "Japanese (日本語)" },
+  { code: "ko", name: "Korean (한국어)" },
+  { code: "ar", name: "Arabic (العربية)" },
+  { code: "ru", name: "Russian (Русский)" },
+];
 
 export default function AppHome() {
   const router = useRouter();
   const [diet, setDiet] = useState<"veg" | "non-veg">("veg");
+  const [language, setLanguage] = useState("en");
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearch = (query: string) => {
     if (query.trim()) {
-      router.push(`/recipes?q=${encodeURIComponent(query)}&diet=${diet}`);
+      router.push(`/recipes?q=${encodeURIComponent(query)}&diet=${diet}&lang=${language}`);
     }
   };
 
@@ -52,8 +76,9 @@ export default function AppHome() {
 
         {/* Search Section */}
         <div className="space-y-5">
-          {/* Diet Toggle - Moved above search */}
-          <div className="flex justify-center">
+          {/* Diet Toggle & Language Selector */}
+          <div className="flex flex-col items-center gap-4">
+            {/* Diet Toggle */}
             <div className="relative inline-flex items-center bg-white border border-border-gray/30 rounded-full p-1 shadow-sm">
               {/* Sliding background */}
               <div
@@ -82,6 +107,27 @@ export default function AppHome() {
               >
                 Non-Veg
               </button>
+            </div>
+
+            {/* Language Selector */}
+            <div className="relative inline-flex items-center bg-white border border-border-gray/30 rounded-2xl px-4 py-2.5 shadow-sm">
+              <Languages size={18} className="text-primary mr-2" strokeWidth={2} />
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="appearance-none bg-transparent text-sm font-medium text-text-dark pr-8 focus:outline-none cursor-pointer"
+              >
+                {LANGUAGES.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-4 pointer-events-none">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-text-medium">
+                  <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
             </div>
           </div>
 

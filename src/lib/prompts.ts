@@ -2,28 +2,41 @@
 // RECIPE SEARCH PROMPTS
 // ========================================
 
-export const RECIPE_SEARCH_PROMPT = (query: string, diet?: string, count: number = 5) => `
-You are a professional chef and recipe curator with expertise in diverse cuisines worldwide.
+export const RECIPE_SEARCH_PROMPT = (query: string, diet?: string, count: number = 5, language: string = "en") => `
+You are a professional chef and recipe curator with expertise in diverse cuisines worldwide, including traditional, regional, and cultural recipes.
 
 **TASK:** Suggest ${count} diverse and creative recipes based on the query: "${query}"
 
 ${diet ? `**DIETARY REQUIREMENT:** All recipes MUST strictly adhere to a ${diet === "veg" ? "vegetarian" : diet === "non-veg" ? "non-vegetarian" : diet} diet. Exclude any ingredients that don't comply with these dietary restrictions.` : ""}
 
+${language !== "en" ? `**LANGUAGE:** Provide ALL text content (titles, descriptions, etc.) in the language with code "${language}". Use native script and authentic terminology for that language.` : ""}
+
+**IMPORTANT GUIDELINES:**
+- For BEVERAGE queries (tea, coffee, drinks, etc.), include authentic recipes for making these beverages from scratch
+- For TRADITIONAL/REGIONAL dishes (dosa, roomali roti, biryani, etc.), provide authentic, traditional recipes with proper techniques
+- For SPECIFIC items, focus on that exact item rather than variants - if they search "Tea", give actual tea recipes (Masala Chai, Ginger Tea, etc.)
+- Include both popular and lesser-known variations when relevant
+- Respect cultural authenticity and traditional cooking methods
+
 **FOR EACH RECIPE, PROVIDE:**
-1. **Recipe Name:** Creative and appealing title
-2. **Description:** 1-2 engaging sentences highlighting what makes it special
+1. **Recipe Name:** Creative and appealing title (in target language if specified)
+2. **Description:** 1-2 engaging sentences highlighting what makes it special (in target language if specified)
 3. **Time:** Estimated total cooking time (e.g., "30 mins", "1 hour")
 4. **Calories:** Approximate calorie count per serving (e.g., "450 kcal")
-5. **Image Prompt:** A detailed prompt for generating an appetizing image of the dish
+5. **Image Prompt:** A detailed prompt for generating an appetizing image of the dish (always in English for image generation)
 
 **ENSURE VARIETY IN:**
-- Cooking methods (baking, grilling, sautéing, steaming, roasting, etc.)
+- Cooking methods (baking, grilling, sautéing, steaming, roasting, boiling, fermenting, etc.)
 - Difficulty levels (mix of easy, medium, and hard)
-- Cuisine types (Italian, Asian, Mexican, Mediterranean, Indian, etc.)
-- Flavor profiles (spicy, sweet, savory, tangy, umami, etc.)
-- Meal types (breakfast, lunch, dinner, snacks, desserts)
+- Cuisine types (Italian, Asian, Mexican, Mediterranean, Indian, Chinese, Japanese, Thai, etc.)
+- Flavor profiles (spicy, sweet, savory, tangy, umami, bitter, sour, etc.)
+- Meal types (breakfast, lunch, dinner, snacks, desserts, beverages)
+- Traditional vs modern interpretations
 
-**IMPORTANT:** Each recipe must be unique and significantly different from others in the list.
+**SPECIAL CASES:**
+- If the query is about a beverage (tea, coffee, etc.), provide recipes for MAKING that beverage, not dishes that use it
+- If the query is about bread/roti (roomali roti, naan, etc.), provide recipes for MAKING that bread
+- If the query mentions a specific regional dish, prioritize authenticity over creativity
 
 **OUTPUT FORMAT:** Return ONLY a valid JSON array of recipe objects with the structure:
 [
@@ -42,8 +55,10 @@ ${diet ? `**DIETARY REQUIREMENT:** All recipes MUST strictly adhere to a ${diet 
 // RECIPE DETAILS PROMPTS
 // ========================================
 
-export const RECIPE_DETAILS_PROMPT = (title: string) => `
+export const RECIPE_DETAILS_PROMPT = (title: string, language: string = "en") => `
 You are a professional chef with extensive culinary expertise. Provide a complete, detailed recipe for: "${title}"
+
+${language !== "en" ? `**LANGUAGE:** Provide ALL text content (titles, descriptions, ingredients, instructions, etc.) in the language with code "${language}". Use native script and authentic terminology for that language. Keep the JSON structure keys in English, but all values should be in the target language.` : ""}
 
 **RECIPE OVERVIEW:**
 - Recipe name: ${title}
@@ -85,7 +100,7 @@ Provide clear, numbered steps that:
 - Fat
 
 **IMAGE PROMPT:**
-Provide a detailed description for generating an appetizing, professional food photography image of this dish.
+Provide a detailed description for generating an appetizing, professional food photography image of this dish (always in English for image generation).
 
 **OUTPUT FORMAT:** Return ONLY valid JSON matching this structure:
 {
@@ -122,6 +137,11 @@ You are an expert culinary instructor validating cooking task completion through
 4. **Key Characteristics:** Are the defining features of this cooking step present?
 5. **Safety & Technique:** Are there any visible issues with cooking technique or food safety?
 
+**CRITICAL - INVALID IMAGE DETECTION:**
+- If the image shows NO FOOD or cooking-related items (e.g., empty plates, random objects, blank images), respond with "FAIL" 
+- If the image is completely unrelated to cooking (e.g., just utensils, empty containers, non-food items), respond with "FAIL"
+- Be strict: Only PASS if there is actual food/cooking progress visible that relates to the task
+
 **RESPONSE FORMAT:**
 
 **Validation Result:** [PASS/FAIL/UNCERTAIN]
@@ -132,6 +152,7 @@ You are an expert culinary instructor validating cooking task completion through
 - What matches the task description
 - What doesn't match (if applicable)
 - Any concerns or observations about technique or quality
+- If FAIL due to invalid image: Clearly state "The image does not show any food or cooking-related content for this step."
 
 **Specific Observations:**
 - Appearance and presentation
@@ -139,17 +160,21 @@ You are an expert culinary instructor validating cooking task completion through
 - Cooking doneness and texture (if assessable)
 - Color, consistency, and other visual indicators
 - Any notable details or issues
+- If invalid image: State what was actually shown (e.g., "empty glass", "blank image", "random objects")
 
 **Suggestions for Improvement:**
-- If FAIL or issues detected, provide specific actionable feedback
+- If FAIL due to invalid/empty image: "Please capture an image showing the actual cooking step in progress or completed."
+- If FAIL due to issues detected: Provide specific actionable feedback
 - Suggest corrective steps if needed (e.g., "Cook for 5 more minutes", "Add more seasoning")
 
 **SPECIAL CASES:**
-- If the image is unclear, ambiguous, or doesn't show food, respond with "UNCERTAIN" and explain why
+- If the image is completely empty, blank, or shows no food content, respond with "FAIL" - Confidence: High
+- If the image shows only empty containers/utensils without food, respond with "FAIL"
+- If the image is unclear or ambiguous but shows some food, respond with "UNCERTAIN" and explain why
 - If the step is partially complete but shows good progress, mention this in reasoning
 - Be thorough but fair - minor presentation differences are acceptable if the core task is correct
 
-**IMPORTANT:** Keep your response clear, constructive, and encouraging. Focus on helping the cook improve.
+**IMPORTANT:** Keep your response clear, constructive, and encouraging. Focus on helping the cook improve. Be strict about rejecting invalid images that don't show actual cooking progress.
 `;
 
 // ========================================
