@@ -1,168 +1,225 @@
-"use client";
+import { ChefHat, Sparkles, Camera, Brain, Shield, Zap } from "lucide-react";
+import Link from "next/link";
 
-import BottomNav from "@/components/BottomNav";
-import InstallPWA from "@/components/InstallPWA";
-import { Search, Sparkles, ChefHat, Zap } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-
-export default function Home() {
-  const router = useRouter();
-  const [diet, setDiet] = useState<"veg" | "non-veg">("veg");
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const handleSearch = (query: string) => {
-    if (query.trim()) {
-      router.push(`/recipes?q=${encodeURIComponent(query)}&diet=${diet}`);
-    }
-  };
-
-  const quickSearches = [
-    "Pasta",
-    "Curry",
-    "Salad",
-    "Soup",
-    "Dessert",
-  ];
-
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted pb-24">
-      {/* PWA Install Button */}
-      <InstallPWA />
-      
-      {/* Sticky Header */}
-      <div className="sticky top-0 bg-gradient-to-b from-background-light to-background-light/95 backdrop-blur-sm border-b border-border-gray/20 z-40 shadow-sm">
-        <div className="max-w-md mx-auto px-6 py-4">
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-1 h-6 bg-primary rounded-full" />
-            <h1 className="text-2xl font-bold text-primary tracking-tight">ChefQuest</h1>
-            <div className="w-1 h-6 bg-primary rounded-full" />
+    <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted">
+      {/* Header */}
+      <header className="border-b border-border-gray/20 bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ChefHat size={32} className="text-primary" strokeWidth={2} />
+            <h1 className="text-2xl font-bold text-primary">ChefQuest</h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/login"
+              className="px-6 py-2.5 bg-primary text-white rounded-full font-semibold hover:bg-primary-dark transition-all active:scale-95"
+            >
+              Get Started
+            </Link>
           </div>
         </div>
-      </div>
+      </header>
 
-      <main className="max-w-md mx-auto px-6 pt-8 flex flex-col space-y-12">
-        
-        {/* Tagline */}
-        <div className="text-center">
-          <p className="text-text-medium text-base">
-            Discover recipes tailored to your taste
+      {/* Hero Section */}
+      <section className="max-w-6xl mx-auto px-6 py-16 md:py-24">
+        <div className="text-center space-y-6 max-w-3xl mx-auto">
+          <h2 className="text-4xl md:text-5xl font-bold text-text-dark leading-tight">
+            Your AI-Powered <span className="text-primary">Culinary Companion</span>
+          </h2>
+          <p className="text-lg md:text-xl text-text-medium leading-relaxed">
+            Discover personalized recipes, get step-by-step cooking guidance, and enhance your 
+            culinary skills with AI-powered assistance. ChefQuest makes cooking easier, smarter, 
+            and more enjoyable.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+            <Link
+              href="/login"
+              className="px-8 py-4 bg-primary text-white rounded-2xl font-semibold text-lg hover:bg-primary-dark transition-all shadow-lg hover:shadow-xl active:scale-95"
+            >
+              Start Cooking
+            </Link>
+            <Link
+              href="#features"
+              className="px-8 py-4 bg-white text-primary rounded-2xl font-semibold text-lg border-2 border-primary hover:bg-primary/5 transition-all active:scale-95"
+            >
+              Learn More
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="max-w-6xl mx-auto px-6 py-16 md:py-24">
+        <div className="text-center mb-12">
+          <h3 className="text-3xl md:text-4xl font-bold text-text-dark mb-4">
+            Everything You Need to Cook Better
+          </h3>
+          <p className="text-lg text-text-medium max-w-2xl mx-auto">
+            ChefQuest combines AI technology with practical cooking tools to help you create 
+            amazing meals every time.
           </p>
         </div>
 
-        {/* Search Section */}
-        <div className="space-y-5">
-          {/* Diet Toggle - Moved above search */}
-          <div className="flex justify-center">
-            <div className="relative inline-flex items-center bg-white border border-border-gray/30 rounded-full p-1 shadow-sm">
-              {/* Sliding background */}
-              <div
-                className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-primary rounded-full transition-all duration-300 ease-out shadow-sm ${
-                  diet === "veg" ? "left-1" : "left-[calc(50%+3px)]"
-                }`}
-              />
-
-              <button
-                onClick={() => setDiet("veg")}
-                className={`relative z-10 w-28 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${
-                  diet === "veg"
-                    ? "text-white"
-                    : "text-text-medium hover:text-text-dark"
-                }`}
-              >
-                Vegetarian
-              </button>
-              <button
-                onClick={() => setDiet("non-veg")}
-                className={`relative z-10 w-28 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${
-                  diet === "non-veg"
-                    ? "text-white"
-                    : "text-text-medium hover:text-text-dark"
-                }`}
-              >
-                Non-Veg
-              </button>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-white border border-border-gray/30 rounded-2xl p-8 hover:border-primary/30 hover:shadow-lg transition-all">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Brain size={28} className="text-primary" strokeWidth={2} />
             </div>
+            <h4 className="text-xl font-semibold text-text-dark mb-3">AI Recipe Generation</h4>
+            <p className="text-text-medium leading-relaxed">
+              Get personalized recipe recommendations based on your ingredients, dietary 
+              preferences, and cooking skill level.
+            </p>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-text-medium group-focus-within:text-primary transition-colors">
-              <Search size={20} strokeWidth={2} />
+          <div className="bg-white border border-border-gray/30 rounded-2xl p-8 hover:border-primary/30 hover:shadow-lg transition-all">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Camera size={28} className="text-primary" strokeWidth={2} />
             </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search recipes, ingredients, cuisines..."
-              className="w-full py-5 pl-14 pr-5 rounded-2xl bg-white border border-border-gray/30 text-text-dark placeholder:text-text-medium/60 focus:outline-none focus:border-primary/50 focus:shadow-[0_0_0_3px_rgba(14,71,1,0.1)] transition-all duration-200"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleSearch(searchQuery);
-                }
-              }}
-            />
+            <h4 className="text-xl font-semibold text-text-dark mb-3">Visual Validation</h4>
+            <p className="text-text-medium leading-relaxed">
+              Use your camera to verify cooking steps with AI-powered image recognition. 
+              Get instant feedback on your progress.
+            </p>
           </div>
 
-          {/* Quick Searches */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 px-1">
-              <Sparkles size={16} className="text-primary" strokeWidth={2} />
-              <span className="text-sm font-medium text-text-medium">Quick searches</span>
+          <div className="bg-white border border-border-gray/30 rounded-2xl p-8 hover:border-primary/30 hover:shadow-lg transition-all">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Sparkles size={28} className="text-primary" strokeWidth={2} />
             </div>
-            <div className="flex flex-wrap gap-2">
-              {quickSearches.map((search) => (
-                <button
-                  key={search}
-                  onClick={() => handleSearch(search)}
-                  className="px-5 py-2.5 rounded-full bg-white border border-border-gray/30 text-sm font-medium text-text-dark hover:border-primary hover:text-primary hover:shadow-sm active:scale-95 transition-all duration-200"
-                >
-                  {search}
-                </button>
-              ))}
+            <h4 className="text-xl font-semibold text-text-dark mb-3">Smart Cooking Mode</h4>
+            <p className="text-text-medium leading-relaxed">
+              Follow interactive step-by-step instructions with built-in timers and smart 
+              task adjustments based on your progress.
+            </p>
+          </div>
+
+          <div className="bg-white border border-border-gray/30 rounded-2xl p-8 hover:border-primary/30 hover:shadow-lg transition-all">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <ChefHat size={28} className="text-primary" strokeWidth={2} />
             </div>
+            <h4 className="text-xl font-semibold text-text-dark mb-3">Recipe Collections</h4>
+            <p className="text-text-medium leading-relaxed">
+              Save your favorite recipes, organize them into collections, and access them 
+              anytime, anywhere.
+            </p>
+          </div>
+
+          <div className="bg-white border border-border-gray/30 rounded-2xl p-8 hover:border-primary/30 hover:shadow-lg transition-all">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Zap size={28} className="text-primary" strokeWidth={2} />
+            </div>
+            <h4 className="text-xl font-semibold text-text-dark mb-3">Dietary Preferences</h4>
+            <p className="text-text-medium leading-relaxed">
+              Filter recipes by vegetarian, non-vegetarian preferences, and get suggestions 
+              tailored to your dietary needs.
+            </p>
+          </div>
+
+          <div className="bg-white border border-border-gray/30 rounded-2xl p-8 hover:border-primary/30 hover:shadow-lg transition-all">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Shield size={28} className="text-primary" strokeWidth={2} />
+            </div>
+            <h4 className="text-xl font-semibold text-text-dark mb-3">Privacy First</h4>
+            <p className="text-text-medium leading-relaxed">
+              We only use Google OAuth for sign-in. No tracking, no ads, no data selling. 
+              Your cooking journey is private.
+            </p>
           </div>
         </div>
+      </section>
 
-        {/* Feature Cards */}
-        <div className="space-y-4 pb-8">
-          <h2 className="text-sm font-semibold text-text-medium uppercase tracking-wide px-1">
-            Why ChefQuest?
-          </h2>
-          <div className="grid gap-3">
-            <div className="bg-white border border-border-gray/30 rounded-2xl p-5 hover:border-primary/30 hover:shadow-sm transition-all duration-200">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <ChefHat size={20} className="text-primary" strokeWidth={2} />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="font-semibold text-text-dark">AI-Powered Recipes</h3>
-                  <p className="text-sm text-text-medium leading-relaxed">
-                    Get personalized recipes based on your ingredients and preferences
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white border border-border-gray/30 rounded-2xl p-5 hover:border-primary/30 hover:shadow-sm transition-all duration-200">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Zap size={20} className="text-primary" strokeWidth={2} />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="font-semibold text-text-dark">Quick & Easy</h3>
-                  <p className="text-sm text-text-medium leading-relaxed">
-                    Find recipes that match your cooking time and skill level
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* How It Works */}
+      <section className="max-w-6xl mx-auto px-6 py-16 md:py-24 bg-background-muted/50 rounded-3xl">
+        <div className="text-center mb-12">
+          <h3 className="text-3xl md:text-4xl font-bold text-text-dark mb-4">
+            How ChefQuest Works
+          </h3>
+          <p className="text-lg text-text-medium">Simple, intuitive, and powered by AI</p>
         </div>
 
-      </main>
+        <div className="grid md:grid-cols-3 gap-8">
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center text-2xl font-bold mx-auto">
+              1
+            </div>
+            <h4 className="text-xl font-semibold text-text-dark">Search & Discover</h4>
+            <p className="text-text-medium">
+              Search for recipes by ingredients, cuisine, or dietary preference. Our AI finds 
+              the perfect match for you.
+            </p>
+          </div>
 
-      <BottomNav />
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center text-2xl font-bold mx-auto">
+              2
+            </div>
+            <h4 className="text-xl font-semibold text-text-dark">Cook with Guidance</h4>
+            <p className="text-text-medium">
+              Follow step-by-step instructions with AI visual validation to ensure perfect 
+              results every time.
+            </p>
+          </div>
+
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center text-2xl font-bold mx-auto">
+              3
+            </div>
+            <h4 className="text-xl font-semibold text-text-dark">Save & Share</h4>
+            <p className="text-text-medium">
+              Save your favorites, track your cooking progress, and build your personal 
+              recipe collection.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="max-w-6xl mx-auto px-6 py-16 md:py-24">
+        <div className="bg-primary rounded-3xl p-12 md:p-16 text-center text-white">
+          <h3 className="text-3xl md:text-4xl font-bold mb-4">
+            Ready to Transform Your Cooking?
+          </h3>
+          <p className="text-lg md:text-xl mb-8 opacity-90 max-w-2xl mx-auto">
+            Join ChefQuest today and discover a smarter way to cook. Sign in with Google to 
+            get started in seconds.
+          </p>
+          <Link
+            href="/login"
+            className="inline-block px-8 py-4 bg-white text-primary rounded-2xl font-semibold text-lg hover:bg-background-light transition-all shadow-lg hover:shadow-xl active:scale-95"
+          >
+            Get Started Free
+          </Link>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-border-gray/30 bg-white">
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <ChefHat size={24} className="text-primary" strokeWidth={2} />
+              <span className="font-semibold text-text-dark">ChefQuest</span>
+            </div>
+            <div className="flex items-center gap-6 text-sm text-text-medium">
+              <Link href="/privacy" className="hover:text-primary transition-colors">
+                Privacy Policy
+              </Link>
+              <Link href="/terms" className="hover:text-primary transition-colors">
+                Terms of Service
+              </Link>
+              <a href="mailto:support@chefquest.com" className="hover:text-primary transition-colors">
+                Contact
+              </a>
+            </div>
+            <p className="text-sm text-text-medium">
+              © 2025 ChefQuest. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

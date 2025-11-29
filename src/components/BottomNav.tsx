@@ -8,7 +8,7 @@ export default function BottomNav() {
     const pathname = usePathname();
     const router = useRouter();
 
-    const isHome = pathname === "/";
+    const isHome = pathname === "/home";
     const isProfile = pathname === "/profile";
 
     return (
@@ -18,7 +18,7 @@ export default function BottomNav() {
                     icon={<Home size={24} />} 
                     label="Home" 
                     active={isHome}
-                    onClick={() => router.push("/")}
+                    onClick={() => router.push("/home")}
                 />
                 <NavItem 
                     icon={<User size={24} />} 

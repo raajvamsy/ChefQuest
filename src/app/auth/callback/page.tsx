@@ -50,7 +50,7 @@ export default function AuthCallbackPage() {
           });
 
           setTimeout(() => {
-            router.push('/');
+            router.push('/home');
           }, 500);
         } else {
           setError('Failed to create session');

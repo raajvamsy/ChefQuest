@@ -17,7 +17,7 @@ export default function LoginPage() {
             try {
                 const isAuth = await authService.isAuthenticated();
                 if (isAuth) {
-            router.push("/");
+            router.push("/home");
                 }
             } catch (err) {
                 // Continue to login page even if check fails
@@ -49,7 +49,7 @@ export default function LoginPage() {
             setLoading(true);
             setError(null);
             await authService.demoLogin();
-            router.push("/");
+            router.push("/home");
         } catch (err) {
             setError("Failed to create demo account");
         } finally {

@@ -149,12 +149,18 @@ export default function TermsPage() {
           </p>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-border-gray/30">
+        <div className="mt-12 pt-6 border-t border-border-gray/30 flex items-center justify-between">
           <a
             href="/"
             className="inline-flex items-center gap-2 text-primary font-semibold hover:underline"
           >
-            ← Back to ChefQuest
+            ← Back to Home
+          </a>
+          <a
+            href="/login"
+            className="px-6 py-2.5 bg-primary text-white rounded-full font-semibold hover:bg-primary-dark transition-all"
+          >
+            Get Started
           </a>
         </div>
       </div>
