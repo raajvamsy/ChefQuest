@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-server'
 import { geminiAgent } from '@/lib/gemini'
 
 export async function GET(request: Request) {
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
 
     // 1. Try to get popular recipes from database first
     if (usePopular) {
-      const { data: popularRecipes, error: popularError } = await supabase
+      const { data: popularRecipes, error: popularError } = await supabaseAdmin
         .from('popular_recipes')
         .select('*')
         .ilike('title', `%${query}%`)
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
     }
 
     // 2. Check for similar recipes in database
-    const { data: existingRecipes, error: existingError } = await supabase
+    const { data: existingRecipes, error: existingError } = await supabaseAdmin
       .from('recipes')
       .select('*')
       .textSearch('title', query, { type: 'websearch' })
@@ -73,12 +74,15 @@ export async function GET(request: Request) {
       gemini_temperature: 0.4,
     }))
 
-    // Use upsert to avoid duplicates
+    // Use upsert to avoid duplicates - use admin client to bypass RLS
     for (const recipe of recipesToInsert) {
-      await supabase.from('recipes').upsert(recipe, { 
+      const { error } = await supabaseAdmin.from('recipes').upsert(recipe, { 
         onConflict: 'id',
         ignoreDuplicates: false 
       })
+      if (error) {
+        console.error('Failed to upsert recipe:', error)
+      }
     }
 
     // 5. Log search query
@@ -105,21 +109,25 @@ async function logSearch(
   responseTime: number
 ) {
   try {
+    // Try to get user from auth header
     const { data: { user } } = await supabase.auth.getUser()
     
-    if (user) {
-      await supabase.from('search_queries').insert({
-        user_id: user.id,
-        query_text: query,
-        diet_filter: diet,
-        recipes_count: count,
-        recipes_generated: recipes || undefined,
-        gemini_model_used: recipes ? 'gemini-2.5-flash' : null,
-        response_time_ms: responseTime,
-        session_id: user.id, // Simple session tracking
-      })
+    // Log search with or without user_id (allow anonymous searches)
+    const { error } = await supabaseAdmin.from('search_queries').insert({
+      user_id: user?.id || null,
+      query_text: query,
+      diet_filter: diet,
+      recipes_count: count,
+      recipes_generated: recipes || undefined,
+      gemini_model_used: recipes ? 'gemini-2.5-flash' : null,
+      response_time_ms: responseTime,
+      session_id: user?.id || null,
+    })
+    
+    if (error) {
+      console.error('Failed to log search:', error)
     }
   } catch (error) {
-    // Silently fail
+    console.error('Error in logSearch:', error)
   }
 }
