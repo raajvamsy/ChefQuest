@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { geminiAgent, Recipe } from "@/lib/gemini";
 import { ArrowLeft, Clock, Flame, Loader2, ChefHat, AlertCircle } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { recipeCache } from "@/lib/cache";
 
-export default function RecipesPage() {
+function RecipesPageContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const query = searchParams.get("q");
@@ -211,6 +211,24 @@ export default function RecipesPage() {
 
             <BottomNav />
         </div>
+    );
+}
+
+export default function RecipesPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted flex items-center justify-center">
+                <div className="flex flex-col items-center space-y-4">
+                    <div className="relative flex items-center justify-center w-16 h-16">
+                        <Loader2 size={40} className="animate-spin text-primary absolute" strokeWidth={2.5} />
+                        <ChefHat size={20} className="text-primary relative z-10" strokeWidth={2} />
+                    </div>
+                    <p className="text-text-medium">Loading recipes...</p>
+                </div>
+            </div>
+        }>
+            <RecipesPageContent />
+        </Suspense>
     );
 }
 
