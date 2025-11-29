@@ -96,9 +96,9 @@ function RecipesPageContent() {
             }
 
             // Filter out duplicates based on title
-            const existingTitles = new Set(recipes.map(r => r.title.toLowerCase()));
+            const existingTitles = new Set(recipes.map((r: Recipe) => r.title.toLowerCase()));
             const uniqueNewRecipes = moreRecipes.filter(
-                r => !existingTitles.has(r.title.toLowerCase())
+                (r: Recipe) => !existingTitles.has(r.title.toLowerCase())
             );
 
             if (uniqueNewRecipes.length === 0) {
