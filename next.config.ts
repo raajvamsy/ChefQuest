@@ -10,6 +10,9 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   /* config options here */
+  turbopack: {
+    // Enable Turbopack (required for Next.js 16+ to suppress webpack config warnings)
+  },
 };
 
 // @ts-expect-error - Type incompatibility between Next.js 15 and next-pwa types

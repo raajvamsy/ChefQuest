@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate ChefQuest Icons</title>
+    <style>
+        body { font-family: system-ui; padding: 40px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; }
+        button { background: #0e4701; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin: 10px 5px; }
+        button:hover { background: #1b6610; }
+        #status { margin-top: 20px; color: #2e7d32; font-weight: 500; }
+        canvas { border: 1px solid #ddd; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍳 ChefQuest Icon Generator</h1>
+        <p>Click the button below to automatically generate and download both PNG icons:</p>
+        <button onclick="generateAllIcons()">Generate Both Icons</button>
+        <div id="status"></div>
+        <div id="preview"></div>
+    </div>
+
+    <script>
+        async function generateIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#0e4701');
+            gradient.addColorStop(1, '#1b6610');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Draw "CQ" text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${size * 0.45}px Inter, -apple-system, system-ui, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('CQ', size / 2, size / 2);
+            
+            // Add decorative accent line
+            ctx.strokeStyle = '#f2b705';
+            ctx.lineWidth = size * 0.015;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(size * 0.25, size * 0.68);
+            ctx.lineTo(size * 0.75, size * 0.68);
+            ctx.stroke();
+            
+            return canvas;
+        }
+
+        async function downloadCanvas(canvas, filename) {
+            return new Promise((resolve) => {
+                canvas.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.download = filename;
+                    link.href = url;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                    setTimeout(resolve, 100);
+                });
+            });
+        }
+
+        async function generateAllIcons() {
+            const status = document.getElementById('status');
+            const preview = document.getElementById('preview');
+            status.innerHTML = 'Generating icons...';
+            preview.innerHTML = '';
+
+            // Generate 192x192
+            const canvas192 = await generateIcon(192);
+            await downloadCanvas(canvas192, 'icon-192x192.png');
+            preview.appendChild(canvas192);
+            status.innerHTML = '✅ Generated icon-192x192.png<br>';
+
+            // Generate 512x512
+            await new Promise(resolve => setTimeout(resolve, 200));
+            const canvas512 = await generateIcon(512);
+            await downloadCanvas(canvas512, 'icon-512x512.png');
+            const scaled = document.createElement('canvas');
+            scaled.width = 192;
+            scaled.height = 192;
+            scaled.getContext('2d').drawImage(canvas512, 0, 0, 192, 192);
+            preview.appendChild(scaled);
+            status.innerHTML += '✅ Generated icon-512x512.png<br><br>📁 Move both PNG files to the <code>public</code> folder!';
+        }
+    </script>
+</body>
+</html>
