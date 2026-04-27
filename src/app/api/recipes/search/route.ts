@@ -52,12 +52,10 @@ export async function GET(request: Request) {
         .select('*')
         .ilike('title', `%${query}%`)
         .eq('diet_type', dietFilter)
-        .limit(5)
+        .limit(count)
 
-      if (!popularError && popularRecipes && popularRecipes.length >= 3) {
-        // Log the search
+      if (!popularError && popularRecipes && popularRecipes.length >= count) {
         await logSearch(query, diet, popularRecipes.length, null, Date.now() - startTime)
-        
         return NextResponse.json({ 
           recipes: popularRecipes, 
           source: 'database',
@@ -66,7 +64,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // 2. Shared cache: return previously AI-generated full recipe list from DB.
+    // 2. Shared cache: only use if it has enough recipes for the requested count
     if (usePopular) {
       const { data: sharedCache, error: sharedCacheError } = await supabaseAdmin
         .from('search_queries')
@@ -79,8 +77,8 @@ export async function GET(request: Request) {
         .maybeSingle()
 
       const cachedRecipes = sharedCache?.recipes_generated
-      if (!sharedCacheError && Array.isArray(cachedRecipes) && cachedRecipes.length > 0) {
-        const recipes = withDeterministicIds(cachedRecipes, dietFilter)
+      if (!sharedCacheError && Array.isArray(cachedRecipes) && cachedRecipes.length >= count) {
+        const recipes = withDeterministicIds(cachedRecipes.slice(0, count), dietFilter)
         await logSearch(cacheQueryKey, diet, recipes.length, null, Date.now() - startTime)
         return NextResponse.json({
           recipes,
@@ -98,11 +96,10 @@ export async function GET(request: Request) {
         .textSearch('title', query, { type: 'websearch' })
         .eq('diet_type', dietFilter)
         .order('view_count', { ascending: false })
-        .limit(5)
+        .limit(count)
 
-      if (!existingError && existingRecipes && existingRecipes.length >= 3) {
+      if (!existingError && existingRecipes && existingRecipes.length >= count) {
         await logSearch(query, diet, existingRecipes.length, null, Date.now() - startTime)
-        
         return NextResponse.json({ 
           recipes: existingRecipes, 
           source: 'database',

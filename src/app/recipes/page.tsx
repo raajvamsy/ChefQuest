@@ -193,7 +193,7 @@ function RecipesPageContent() {
             {/* Content */}
             <main className="flex-1 w-full px-4 sm:px-6 py-5">
                 {loading ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                         {Array.from({ length: SKELETON_COUNT }).map((_, i) => <SkeletonCard key={i} />)}
                     </div>
                 ) : error ? (
@@ -224,7 +224,7 @@ function RecipesPageContent() {
                             {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"} found
                         </p>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                             {recipes.map((recipe) => (
                                 <RecipeCard key={recipe.id} recipe={recipe} language={language} />
                             ))}
@@ -281,7 +281,7 @@ export default function RecipesPage() {
             <div className="min-h-screen bg-background-muted flex flex-col">
                 <div className="w-full h-14 bg-white border-b border-border-gray/15" />
                 <div className="w-full px-4 sm:px-6 py-5">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                         {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
                     </div>
                 </div>
