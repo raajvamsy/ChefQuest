@@ -3,7 +3,7 @@
 import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Recipe } from "@/lib/gemini";
-import { ArrowLeft, Clock, Flame, Loader2, ChefHat, AlertCircle } from "lucide-react";
+import { Clock, Flame, Loader2, ChefHat, AlertCircle, User, ChevronRight } from "lucide-react";
 import { recipeCache } from "@/lib/cache";
 
 function RecipesPageContent() {
@@ -125,18 +125,33 @@ function RecipesPageContent() {
             {/* Header */}
             <header className="sticky top-0 z-40 bg-white border-b border-border-gray/15">
                 <div className="w-full px-5 h-14 flex items-center gap-3">
+                    {/* Logo */}
                     <button
-                        onClick={() => router.back()}
-                        className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-background-muted transition-colors shrink-0"
+                        onClick={() => router.push("/home")}
+                        className="text-lg font-bold text-primary tracking-tight shrink-0"
                     >
-                        <ArrowLeft size={18} strokeWidth={2} className="text-text-dark" />
+                        ChefQuest
                     </button>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-base font-semibold text-text-dark truncate leading-tight">
-                            {query ? `"${query}"` : "Recipes"}
-                        </p>
-                        <p className="text-xs text-text-medium">{dietLabel} recipes</p>
-                    </div>
+
+                    {/* Search query pill */}
+                    {query && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background-muted rounded-full border border-border-gray/20 min-w-0 overflow-hidden">
+                            <span className="text-xs font-medium text-text-medium truncate">{dietLabel}</span>
+                            <span className="text-border-gray/60">·</span>
+                            <span className="text-xs font-semibold text-text-dark truncate">{query}</span>
+                        </div>
+                    )}
+
+                    <div className="flex-1" />
+
+                    {/* Profile */}
+                    <button
+                        onClick={() => router.push("/profile")}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border-gray/30 text-xs font-semibold text-text-medium hover:text-text-dark hover:border-border-gray/60 transition-colors shrink-0"
+                    >
+                        <User size={14} strokeWidth={2} />
+                        <span className="hidden sm:inline">Profile</span>
+                    </button>
                 </div>
             </header>
 
@@ -181,14 +196,13 @@ function RecipesPageContent() {
                             Found {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"}
                         </p>
 
-                        {/* Recipe list — single white container with dividers */}
-                        <div className="bg-white rounded-2xl border border-border-gray/20 shadow-sm overflow-hidden">
-                            {recipes.map((recipe, idx) => (
-                                <RecipeRow
+                        {/* Recipe cards */}
+                        <div className="space-y-3">
+                            {recipes.map((recipe) => (
+                                <RecipeCard
                                     key={recipe.id}
                                     recipe={recipe}
                                     language={language}
-                                    isLast={idx === recipes.length - 1}
                                 />
                             ))}
                         </div>
@@ -220,31 +234,34 @@ function RecipesPageContent() {
     );
 }
 
-function RecipeRow({ recipe, language, isLast }: { recipe: Recipe; language?: string; isLast: boolean }) {
+function RecipeCard({ recipe, language }: { recipe: Recipe; language?: string }) {
     const router = useRouter();
 
     return (
         <div
             onClick={() => router.push(`/recipes/${recipe.id}${language ? `?lang=${language}` : ""}`)}
-            className={`px-5 py-4 cursor-pointer hover:bg-background-muted/50 active:bg-background-muted transition-colors duration-100 ${
-                !isLast ? "border-b border-border-gray/15" : ""
-            }`}
+            className="bg-white rounded-2xl border border-border-gray/20 shadow-sm px-5 py-4 cursor-pointer hover:border-primary/25 hover:shadow-md active:scale-[0.99] transition-all duration-150"
         >
-            <h3 className="text-sm font-semibold text-text-dark leading-snug mb-1">
-                {recipe.title}
-            </h3>
-            <p className="text-xs text-text-medium leading-relaxed line-clamp-2 mb-3">
-                {recipe.description}
-            </p>
-            <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1 text-xs text-text-medium">
-                    <Clock size={13} className="text-primary" strokeWidth={2} />
-                    <span>{recipe.time}</span>
+            <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0 space-y-1.5">
+                    <h3 className="text-sm font-semibold text-text-dark leading-snug">
+                        {recipe.title}
+                    </h3>
+                    <p className="text-xs text-text-medium leading-relaxed line-clamp-2">
+                        {recipe.description}
+                    </p>
+                    <div className="flex items-center gap-4 pt-1">
+                        <div className="flex items-center gap-1 text-xs text-text-medium">
+                            <Clock size={12} className="text-primary shrink-0" strokeWidth={2} />
+                            <span>{recipe.time}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-text-medium">
+                            <Flame size={12} className="text-secondary-orange shrink-0" strokeWidth={2} />
+                            <span>{recipe.calories}</span>
+                        </div>
+                    </div>
                 </div>
-                <div className="flex items-center gap-1 text-xs text-text-medium">
-                    <Flame size={13} className="text-secondary-orange" strokeWidth={2} />
-                    <span>{recipe.calories}</span>
-                </div>
+                <ChevronRight size={16} className="text-border-gray shrink-0 mt-0.5" strokeWidth={2} />
             </div>
         </div>
     );
