@@ -1,6 +1,5 @@
 "use client";
 
-import BottomNav from "@/components/BottomNav";
 import InstallPWA from "@/components/InstallPWA";
 import {
   Search,
@@ -107,7 +106,7 @@ export default function AppHome() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col pb-20">
+    <div className="min-h-screen flex flex-col">
 
       {/* Top Nav */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-border-gray/15">
@@ -141,7 +140,7 @@ export default function AppHome() {
           </div>
 
           {/* Diet toggle */}
-          <div className="relative inline-flex items-center bg-background-muted border border-border-gray/25 rounded-full p-0.5">
+          <div className="relative inline-flex items-center bg-background-muted border border-border-gray/25 rounded-full p-0.5 shrink-0">
             <div
               className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] bg-primary rounded-full transition-all duration-300 ease-out ${
                 diet === "veg" ? "left-0.5" : "left-[calc(50%+2px)]"
@@ -149,7 +148,7 @@ export default function AppHome() {
             />
             <button
               onClick={() => setDiet("veg")}
-              className={`relative z-10 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
+              className={`relative z-10 w-[58px] py-1.5 rounded-full text-xs font-semibold text-center transition-all duration-300 ${
                 diet === "veg" ? "text-white" : "text-text-medium"
               }`}
             >
@@ -157,7 +156,7 @@ export default function AppHome() {
             </button>
             <button
               onClick={() => setDiet("non-veg")}
-              className={`relative z-10 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
+              className={`relative z-10 w-[58px] py-1.5 rounded-full text-xs font-semibold text-center transition-all duration-300 ${
                 diet === "non-veg" ? "text-white" : "text-text-medium"
               }`}
             >
@@ -225,7 +224,7 @@ export default function AppHome() {
           </div>
 
           {/* Sub-actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center">
             <button
               onClick={() => setShowIngredientsSheet(true)}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/80 border border-border-gray/30 text-sm font-medium text-text-dark shadow-sm hover:border-primary/40 hover:text-primary active:scale-95 transition-all duration-150"
@@ -235,27 +234,6 @@ export default function AppHome() {
                 ? `${selectedIngredients.length} ingredients`
                 : "By ingredients"}
             </button>
-
-            {/* Mobile language — shown only on small screens */}
-            <div className="relative flex sm:hidden items-center gap-1 bg-white/80 border border-border-gray/30 rounded-full px-3 py-2 shadow-sm">
-              <Languages size={14} className="text-text-medium shrink-0" strokeWidth={2} />
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="appearance-none bg-transparent text-xs font-medium text-text-medium pr-4 focus:outline-none cursor-pointer max-w-[80px]"
-              >
-                {LANGUAGES.map((lang) => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-3 pointer-events-none">
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="text-text-medium">
-                  <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -280,8 +258,6 @@ export default function AppHome() {
         </div>
       </section>
 
-      <BottomNav />
-
       {/* Ingredients Bottom Sheet */}
       {showIngredientsSheet && (
         <div
@@ -289,7 +265,7 @@ export default function AppHome() {
           onClick={() => setShowIngredientsSheet(false)}
         >
           <div
-            className="absolute inset-x-0 bottom-20 max-w-md mx-auto bg-white rounded-3xl border border-border-gray/20 shadow-2xl p-6 max-h-[72vh] overflow-y-auto"
+            className="absolute inset-x-0 bottom-6 max-w-md mx-auto bg-white rounded-3xl border border-border-gray/20 shadow-2xl p-6 max-h-[80vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
