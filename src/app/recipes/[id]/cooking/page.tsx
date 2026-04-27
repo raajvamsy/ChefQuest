@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { RecipeDetails, TaskAdjustment } from "@/lib/gemini";
-import { ArrowLeft, Camera, Check, CheckCircle2, Circle, Loader2, X, Eye, Sparkles, AlertCircle, Lock, Play, Pause, RotateCcw, Bell, BellOff } from "lucide-react";
+import { ArrowLeft, Camera, Check, CheckCircle2, Circle, Loader2, X, Eye, Sparkles, AlertCircle, Lock, Play, Pause, RotateCcw, Bell, BellOff, User } from "lucide-react";
 import { recipeCache } from "@/lib/cache";
 import { geminiAgent } from "@/lib/gemini";
 import { supabase } from "@/lib/supabase";
@@ -705,43 +705,60 @@ export default function CookingQuestPage() {
 
     if (loading || !recipe) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted flex items-center justify-center">
-                <Loader2 size={40} className="animate-spin text-primary" />
+            <div className="min-h-screen bg-background-muted flex items-center justify-center">
+                <div className="relative flex items-center justify-center w-14 h-14">
+                    <Loader2 size={36} className="animate-spin text-primary absolute" strokeWidth={2} />
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted pb-8">
+        <div className="min-h-screen bg-background-muted flex flex-col">
             {/* Header */}
-            <div className="sticky top-0 bg-white/90 backdrop-blur-md border-b border-border-gray/30 z-50 shadow-sm">
-                <div className="max-w-2xl mx-auto px-6 py-4">
-                    <div className="flex items-start gap-3 mb-3">
-                        <button
-                            onClick={() => router.back()}
-                            className="p-2 rounded-full hover:bg-background-muted/50 text-text-dark transition-all flex-shrink-0 mt-0.5"
-                        >
-                            <ArrowLeft size={20} strokeWidth={2} />
-                        </button>
-                        <div className="flex-1 min-w-0">
-                            <h1 className="text-sm font-semibold text-primary break-words leading-tight">
-                                {recipe.title}
-                            </h1>
-                            <p className="text-xs text-text-medium mt-0.5">
-                                {completedSteps} of {totalSteps} steps completed
-                            </p>
-                        </div>
+            <header className="sticky top-0 z-40 bg-white border-b border-border-gray/15">
+                {/* Row 1: nav */}
+                <div className="w-full px-4 h-14 flex items-center gap-3">
+                    <button
+                        onClick={() => router.back()}
+                        className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-background-muted text-text-dark transition-colors shrink-0"
+                    >
+                        <ArrowLeft size={18} strokeWidth={2} />
+                    </button>
+                    <button
+                        onClick={() => router.push("/home")}
+                        className="text-lg font-bold text-primary tracking-tight shrink-0"
+                    >
+                        ChefQuest
+                    </button>
+                    <div className="flex-1 min-w-0">
+                        <span className="text-xs font-medium text-text-medium truncate block">{recipe.title}</span>
                     </div>
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={requestNotificationAccess}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-background-muted text-text-medium text-xs font-medium hover:text-text-dark transition-colors"
-                            >
-                                {notificationPermission === "granted" ? <Bell size={14} /> : <BellOff size={14} />}
-                                {notificationPermission === "granted" ? "Alerts On" : "Enable Alerts"}
-                            </button>
-                        </div>
+                    <button
+                        onClick={requestNotificationAccess}
+                        className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-background-muted transition-colors shrink-0"
+                        title={notificationPermission === "granted" ? "Alerts On" : "Enable Alerts"}
+                    >
+                        {notificationPermission === "granted"
+                            ? <Bell size={15} className="text-primary" strokeWidth={2} />
+                            : <BellOff size={15} className="text-text-medium" strokeWidth={2} />
+                        }
+                    </button>
+                    <button
+                        onClick={() => router.push("/profile")}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border-gray/30 text-xs font-semibold text-text-medium hover:text-text-dark hover:border-border-gray/60 transition-colors shrink-0"
+                    >
+                        <User size={14} strokeWidth={2} />
+                        <span className="hidden sm:inline">Profile</span>
+                    </button>
+                </div>
+
+                {/* Row 2: progress */}
+                <div className="px-4 pb-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs text-text-medium">
+                            {completedSteps} of {totalSteps} steps completed
+                        </span>
                         <button
                             onClick={() => setShowCancelDialog(true)}
                             className="text-xs font-semibold text-text-medium hover:text-error transition-colors"
@@ -749,21 +766,24 @@ export default function CookingQuestPage() {
                             Cancel Quest
                         </button>
                     </div>
-                    {notificationHint && (
-                        <p className="text-[11px] text-text-medium mb-2">{notificationHint}</p>
-                    )}
-                    {/* Progress Bar */}
-                    <div className="h-2 bg-background-muted rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-background-muted rounded-full overflow-hidden">
                         <div
-                            className="h-full bg-primary transition-all duration-500 ease-out"
+                            className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
                             style={{ width: `${progress}%` }}
                         />
                     </div>
-                    {activeTimerStep !== null && timerRemainingSeconds > 0 && (
-                        <div className="mt-3 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 flex items-center justify-between">
+                    {notificationHint && (
+                        <p className="text-[11px] text-text-medium">{notificationHint}</p>
+                    )}
+                </div>
+
+                {/* Row 3: active timer pill (conditional) */}
+                {activeTimerStep !== null && timerRemainingSeconds > 0 && (
+                    <div className="px-4 pb-3">
+                        <div className="rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <span className="text-xs font-semibold text-primary">Step {activeTimerStep}</span>
-                                <span className="text-sm font-bold text-primary">{formatDuration(timerRemainingSeconds)}</span>
+                                <span className="text-sm font-bold text-primary tabular-nums">{formatDuration(timerRemainingSeconds)}</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 {timerRunning ? (
@@ -792,13 +812,13 @@ export default function CookingQuestPage() {
                                 </button>
                             </div>
                         </div>
-                    )}
-                </div>
-            </div>
+                    </div>
+                )}
+            </header>
 
             {/* Adjustment Message */}
             {adjustmentMessage && (
-                <div className="max-w-2xl mx-auto px-6 pt-6">
+                <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-5">
                     <div className="bg-secondary-orange/10 border border-secondary-orange/30 rounded-2xl p-4 flex gap-3 animate-in fade-in slide-in-from-top duration-300">
                         <AlertCircle size={20} className="text-secondary-orange flex-shrink-0 mt-0.5" strokeWidth={2} />
                         <div className="flex-1">
@@ -817,7 +837,7 @@ export default function CookingQuestPage() {
 
             {/* Timer Completion Alert */}
             {timerAlertMessage && (
-                <div className="max-w-2xl mx-auto px-6 pt-6">
+                <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-5">
                     <div className="bg-primary/10 border border-primary/30 rounded-2xl p-4 flex items-center justify-between gap-3">
                         <p className="text-sm text-text-dark">{timerAlertMessage}</p>
                         <div className="flex items-center gap-3">
@@ -844,7 +864,7 @@ export default function CookingQuestPage() {
             )}
 
             {/* Steps Checklist */}
-            <div className="max-w-2xl mx-auto px-6 py-6 space-y-3">
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5 space-y-3">
                 {recipeSteps.map((step, index) => {
                     const status = stepStatuses.find((s) => s.stepNumber === step.step_number);
                     const isCompleted = status?.completed || false;
@@ -1016,7 +1036,7 @@ export default function CookingQuestPage() {
 
             {/* Completion Message */}
             {completedSteps === totalSteps && (
-                <div className="max-w-2xl mx-auto px-6 py-4">
+                <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
                     <div className="bg-primary/10 border border-primary/30 rounded-2xl p-6 text-center space-y-3">
                         <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mx-auto">
                             <Check size={32} className="text-white" strokeWidth={3} />
