@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { RecipeDetails, TaskAdjustment } from "@/lib/gemini";
-import { ArrowLeft, Camera, Check, CheckCircle2, Circle, Loader2, X, Eye, Sparkles, AlertCircle, Lock } from "lucide-react";
+import { ArrowLeft, Camera, Check, CheckCircle2, Circle, Loader2, X, Eye, Sparkles, AlertCircle, Lock, Play, Pause, RotateCcw, Bell, BellOff } from "lucide-react";
 import { recipeCache } from "@/lib/cache";
 import { geminiAgent } from "@/lib/gemini";
 import { supabase } from "@/lib/supabase";
@@ -24,6 +24,14 @@ interface StepStatus {
     validationResult?: string;
 }
 
+interface PersistedTimerState {
+    activeTimerStep: number | string | null;
+    timerInitialSeconds: number;
+    timerRemainingSeconds: number;
+    timerRunning: boolean;
+    savedAt: number;
+}
+
 export default function CookingQuestPage() {
     const params = useParams();
     const router = useRouter();
@@ -42,6 +50,19 @@ export default function CookingQuestPage() {
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [adjustmentMessage, setAdjustmentMessage] = useState<string | null>(null);
     const [cookingSessionId, setCookingSessionId] = useState<string | null>(null);
+    const [activeTimerStep, setActiveTimerStep] = useState<number | string | null>(null);
+    const [timerInitialSeconds, setTimerInitialSeconds] = useState(0);
+    const [timerRemainingSeconds, setTimerRemainingSeconds] = useState(0);
+    const [timerRunning, setTimerRunning] = useState(false);
+    const [timerAlertMessage, setTimerAlertMessage] = useState<string | null>(null);
+    const [timerFinishedStep, setTimerFinishedStep] = useState<number | string | null>(null);
+    const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
+    const [notificationHint, setNotificationHint] = useState<string | null>(null);
+    const [showCancelDialog, setShowCancelDialog] = useState(false);
+    const [isCancellingQuest, setIsCancellingQuest] = useState(false);
+    const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const activeTimerStepRef = useRef<number | string | null>(null);
+    const timerStorageKey = `chefquest_cooking_timer_${id}`;
 
     const getAuthHeaders = async () => {
         const { data: { session } } = await supabase.auth.getSession();
@@ -105,18 +126,336 @@ export default function CookingQuestPage() {
 
         // Cleanup camera on unmount
         return () => {
+            stopTimer();
             if (stream) {
                 stream.getTracks().forEach((track) => track.stop());
             }
         };
     }, [id, router, stream]);
 
+    useEffect(() => {
+        activeTimerStepRef.current = activeTimerStep;
+    }, [activeTimerStep]);
+
+    useEffect(() => {
+        if (typeof window !== "undefined" && "Notification" in window) {
+            setNotificationPermission(Notification.permission);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        if (!id) return;
+
+        const raw = localStorage.getItem(timerStorageKey);
+        if (!raw) return;
+
+        try {
+            const saved = JSON.parse(raw) as PersistedTimerState;
+            if (!saved.activeTimerStep || saved.timerRemainingSeconds <= 0) {
+                clearPersistedTimer();
+                return;
+            }
+
+            const elapsedSeconds = Math.max(
+                0,
+                Math.floor((Date.now() - (saved.savedAt || Date.now())) / 1000)
+            );
+            const restoredRemaining = saved.timerRunning
+                ? Math.max(saved.timerRemainingSeconds - elapsedSeconds, 0)
+                : saved.timerRemainingSeconds;
+
+            setActiveTimerStep(saved.activeTimerStep);
+            setTimerInitialSeconds(saved.timerInitialSeconds || restoredRemaining);
+            setTimerRemainingSeconds(restoredRemaining);
+            setTimerRunning(saved.timerRunning && restoredRemaining > 0);
+
+            if (saved.timerRunning && restoredRemaining === 0) {
+                triggerTimerDoneAlert(saved.activeTimerStep);
+                clearPersistedTimer();
+            }
+        } catch {
+            clearPersistedTimer();
+        }
+    }, [id, timerStorageKey]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+
+        if (activeTimerStep === null || timerRemainingSeconds <= 0) {
+            clearPersistedTimer();
+            return;
+        }
+
+        const payload: PersistedTimerState = {
+            activeTimerStep,
+            timerInitialSeconds,
+            timerRemainingSeconds,
+            timerRunning,
+            savedAt: Date.now(),
+        };
+        localStorage.setItem(timerStorageKey, JSON.stringify(payload));
+    }, [
+        activeTimerStep,
+        timerInitialSeconds,
+        timerRemainingSeconds,
+        timerRunning,
+        timerStorageKey,
+    ]);
+
+    useEffect(() => {
+        if (!timerRunning) return;
+
+        timerIntervalRef.current = setInterval(() => {
+            setTimerRemainingSeconds((prev) => {
+                if (prev <= 1) {
+                    if (timerIntervalRef.current) {
+                        clearInterval(timerIntervalRef.current);
+                        timerIntervalRef.current = null;
+                    }
+                    setTimerRunning(false);
+                    setActiveTimerStep(null);
+                    setTimerInitialSeconds(0);
+                    triggerTimerDoneAlert(activeTimerStepRef.current);
+                    clearPersistedTimer();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => {
+            if (timerIntervalRef.current) {
+                clearInterval(timerIntervalRef.current);
+                timerIntervalRef.current = null;
+            }
+        };
+    }, [timerRunning]);
+
     const toggleStepCompletion = (stepNumber: number | string) => {
+        const targetStatus = stepStatuses.find((s) => s.stepNumber === stepNumber);
+        const willBeCompleted = !targetStatus?.completed;
+
+        if (willBeCompleted && activeTimerStep === stepNumber) {
+            stopTimer();
+            setActiveTimerStep(null);
+            setTimerInitialSeconds(0);
+            setTimerRemainingSeconds(0);
+            setTimerFinishedStep(null);
+            clearPersistedTimer();
+        }
+
         setStepStatuses((prev) =>
             prev.map((s) =>
                 s.stepNumber === stepNumber ? { ...s, completed: !s.completed } : s
             )
         );
+    };
+
+    const markStepCompleted = (stepNumber: number | string) => {
+        if (activeTimerStep === stepNumber) {
+            stopTimer();
+            setActiveTimerStep(null);
+            setTimerInitialSeconds(0);
+            setTimerRemainingSeconds(0);
+            setTimerFinishedStep(null);
+            clearPersistedTimer();
+        }
+
+        setStepStatuses((prev) =>
+            prev.map((s) =>
+                s.stepNumber === stepNumber ? { ...s, completed: true } : s
+            )
+        );
+    };
+
+    const formatDuration = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    };
+
+    const inferStepTimerSeconds = (instruction: string) => {
+        const rangeMatch = instruction.match(/(\d+)\s*-\s*(\d+)\s*(minutes?|mins?|min|seconds?|secs?|sec)/i);
+        if (rangeMatch) {
+            const minVal = parseInt(rangeMatch[1], 10);
+            const maxVal = parseInt(rangeMatch[2], 10);
+            const avg = Math.round((minVal + maxVal) / 2);
+            const unit = rangeMatch[3].toLowerCase();
+            return unit.startsWith("sec") ? avg : avg * 60;
+        }
+
+        const singleMatch = instruction.match(/(\d+)\s*(minutes?|mins?|min|seconds?|secs?|sec)/i);
+        if (singleMatch) {
+            const value = parseInt(singleMatch[1], 10);
+            const unit = singleMatch[2].toLowerCase();
+            return unit.startsWith("sec") ? value : value * 60;
+        }
+
+        return 5 * 60;
+    };
+
+    const stopTimer = () => {
+        if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+        }
+        setTimerRunning(false);
+    };
+
+    const triggerTimerDoneAlert = (stepNumber: number | string | null) => {
+        if (!stepNumber) return;
+        setTimerFinishedStep(stepNumber);
+        setTimerAlertMessage(`Step ${stepNumber} timer is complete. Ready for the next action.`);
+        playTimerDoneCue();
+        void showSystemNotification(
+            "ChefQuest Timer Complete",
+            `Step ${stepNumber} is done. Check your cooking quest.`,
+            `chefquest-step-${stepNumber}`
+        );
+    };
+
+    const playTimerDoneCue = () => {
+        if (typeof window === "undefined") return;
+        try {
+            if ("vibrate" in navigator) {
+                navigator.vibrate([160, 80, 160]);
+            }
+            const AudioCtx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+            const oscillator = ctx.createOscillator();
+            const gain = ctx.createGain();
+            oscillator.type = "sine";
+            oscillator.frequency.value = 880;
+            gain.gain.value = 0.02;
+            oscillator.connect(gain);
+            gain.connect(ctx.destination);
+            oscillator.start();
+            oscillator.stop(ctx.currentTime + 0.18);
+        } catch {
+            // Non-blocking fallback: in-app alert banner remains visible.
+        }
+    };
+
+    const showSystemNotification = async (title: string, body: string, tag: string) => {
+        if (typeof window === "undefined" || !("Notification" in window)) return;
+
+        let permission = Notification.permission;
+        if (permission === "default") {
+            permission = await Notification.requestPermission();
+            setNotificationPermission(permission);
+        }
+        if (permission !== "granted") return;
+
+        const options: NotificationOptions = {
+            body,
+            tag,
+            requireInteraction: true,
+            icon: "/icon-192x192.png",
+            badge: "/icon-192x192.png",
+        };
+
+        let delivered = false;
+        try {
+            if ("serviceWorker" in navigator) {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    await registration.showNotification(title, options);
+                    delivered = true;
+                }
+            }
+            // Try direct Web Notification as an additional path.
+            new Notification(title, options);
+            delivered = true;
+        } catch {
+            // In-app alert banner is already shown as fallback.
+        }
+
+        if (!delivered) {
+            setNotificationHint(
+                "System notification could not be displayed. Check OS/browser notification settings."
+            );
+        }
+    };
+
+    const clearPersistedTimer = () => {
+        if (typeof window === "undefined") return;
+        localStorage.removeItem(timerStorageKey);
+    };
+
+    const startStepTimer = (stepNumber: number | string, instruction: string) => {
+        const replacingAnotherStep =
+            activeTimerStep !== null && activeTimerStep !== stepNumber && timerRunning;
+
+        if (replacingAnotherStep) {
+            const confirmed = window.confirm(
+                `A timer is running for Step ${activeTimerStep}. Start Step ${stepNumber} timer instead?`
+            );
+            if (!confirmed) return;
+        }
+
+        const isSameStepPaused = activeTimerStep === stepNumber && timerRemainingSeconds > 0 && !timerRunning;
+        const initial = isSameStepPaused ? timerRemainingSeconds : inferStepTimerSeconds(instruction);
+
+        stopTimer();
+        setActiveTimerStep(stepNumber);
+        setTimerInitialSeconds(initial);
+        setTimerRemainingSeconds(initial);
+        setTimerRunning(true);
+        setTimerAlertMessage(null);
+        setTimerFinishedStep(null);
+
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+            void requestNotificationAccess();
+        }
+    };
+
+    const resetStepTimer = () => {
+        stopTimer();
+        setTimerRemainingSeconds(timerInitialSeconds);
+    };
+
+    const requestNotificationAccess = async () => {
+        if (typeof window === "undefined" || !("Notification" in window)) return;
+        const permission = await Notification.requestPermission();
+        setNotificationPermission(permission);
+        if (permission !== "granted") {
+            setNotificationHint("Notifications are blocked. You can still use in-app timer alerts.");
+        } else {
+            setNotificationHint(null);
+        }
+    };
+
+
+    const confirmCancelQuest = async () => {
+        setIsCancellingQuest(true);
+        stopTimer();
+        clearPersistedTimer();
+        closeCamera();
+        setTimerAlertMessage(null);
+
+        if (cookingSessionId) {
+            try {
+                const authHeaders = await getAuthHeaders();
+                await fetch('/api/cooking/session', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', ...authHeaders },
+                    body: JSON.stringify({
+                        sessionId: cookingSessionId,
+                        updates: {
+                            session_status: 'cancelled',
+                        },
+                    }),
+                });
+            } catch {
+                // Non-blocking
+            }
+        }
+
+        setShowCancelDialog(false);
+        setIsCancellingQuest(false);
+        router.push(`/recipes/${id}`);
     };
 
     const startCamera = async (stepNumber: number | string) => {
@@ -393,6 +732,26 @@ export default function CookingQuestPage() {
                             </p>
                         </div>
                     </div>
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={requestNotificationAccess}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-background-muted text-text-medium text-xs font-medium hover:text-text-dark transition-colors"
+                            >
+                                {notificationPermission === "granted" ? <Bell size={14} /> : <BellOff size={14} />}
+                                {notificationPermission === "granted" ? "Alerts On" : "Enable Alerts"}
+                            </button>
+                        </div>
+                        <button
+                            onClick={() => setShowCancelDialog(true)}
+                            className="text-xs font-semibold text-text-medium hover:text-error transition-colors"
+                        >
+                            Cancel Quest
+                        </button>
+                    </div>
+                    {notificationHint && (
+                        <p className="text-[11px] text-text-medium mb-2">{notificationHint}</p>
+                    )}
                     {/* Progress Bar */}
                     <div className="h-2 bg-background-muted rounded-full overflow-hidden">
                         <div
@@ -400,6 +759,40 @@ export default function CookingQuestPage() {
                             style={{ width: `${progress}%` }}
                         />
                     </div>
+                    {activeTimerStep !== null && timerRemainingSeconds > 0 && (
+                        <div className="mt-3 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-primary">Step {activeTimerStep}</span>
+                                <span className="text-sm font-bold text-primary">{formatDuration(timerRemainingSeconds)}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {timerRunning ? (
+                                    <button
+                                        onClick={stopTimer}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white border border-border-gray/30 text-xs font-semibold text-text-dark"
+                                    >
+                                        <Pause size={12} />
+                                        Pause
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => setTimerRunning(true)}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary text-white text-xs font-semibold"
+                                    >
+                                        <Play size={12} />
+                                        Resume
+                                    </button>
+                                )}
+                                <button
+                                    onClick={resetStepTimer}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white border border-border-gray/30 text-xs font-semibold text-text-dark"
+                                >
+                                    <RotateCcw size={12} />
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -418,6 +811,34 @@ export default function CookingQuestPage() {
                         >
                             <X size={18} />
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Timer Completion Alert */}
+            {timerAlertMessage && (
+                <div className="max-w-2xl mx-auto px-6 pt-6">
+                    <div className="bg-primary/10 border border-primary/30 rounded-2xl p-4 flex items-center justify-between gap-3">
+                        <p className="text-sm text-text-dark">{timerAlertMessage}</p>
+                        <div className="flex items-center gap-3">
+                            {timerFinishedStep !== null && (
+                                <button
+                                    onClick={() => {
+                                        markStepCompleted(timerFinishedStep);
+                                        setTimerAlertMessage(null);
+                                    }}
+                                    className="text-xs font-semibold text-primary hover:underline"
+                                >
+                                    Mark step complete
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setTimerAlertMessage(null)}
+                                className="text-text-medium hover:text-text-dark"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -539,6 +960,23 @@ export default function CookingQuestPage() {
                                                 {step.originalInstruction}
                                             </p>
                                         </details>
+                                    )}
+
+                                    {/* Timer Trigger */}
+                                    {!isLocked && !isCompleted && (
+                                        <div className="flex items-center justify-between">
+                                            <button
+                                                onClick={() => startStepTimer(step.step_number, step.instruction)}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background-muted text-text-dark text-xs font-semibold hover:bg-border-gray/30 transition-colors"
+                                            >
+                                                <Play size={12} />
+                                                {activeTimerStep === step.step_number
+                                                    ? timerRunning
+                                                        ? "Timer running"
+                                                        : "Resume timer"
+                                                    : `Start ${formatDuration(inferStepTimerSeconds(step.instruction))} timer`}
+                                            </button>
+                                        </div>
                                     )}
 
                                     {/* AI Validation Button */}
@@ -671,6 +1109,43 @@ export default function CookingQuestPage() {
                                 </button>
                             </>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Cancel Quest Dialog */}
+            {showCancelDialog && (
+                <div className="fixed inset-0 z-[300] bg-black/40 backdrop-blur-[1px] flex items-center justify-center px-6">
+                    <div className="w-full max-w-sm bg-white rounded-2xl border border-border-gray/30 p-5 space-y-4 shadow-2xl">
+                        <div className="space-y-2">
+                            <h3 className="text-base font-semibold text-text-dark">Cancel Cooking Quest?</h3>
+                            <p className="text-sm text-text-medium leading-relaxed">
+                                This will stop your active timer and discard in-progress cooking setup for this recipe.
+                            </p>
+                        </div>
+                        <div className="flex items-center justify-end gap-2">
+                            <button
+                                onClick={() => setShowCancelDialog(false)}
+                                disabled={isCancellingQuest}
+                                className="px-3 py-2 rounded-lg text-sm font-medium text-text-medium hover:text-text-dark disabled:opacity-50"
+                            >
+                                Keep Quest
+                            </button>
+                            <button
+                                onClick={confirmCancelQuest}
+                                disabled={isCancellingQuest}
+                                className="px-3 py-2 rounded-lg bg-error text-white text-sm font-semibold hover:opacity-95 disabled:opacity-50 inline-flex items-center gap-2"
+                            >
+                                {isCancellingQuest ? (
+                                    <>
+                                        <Loader2 size={14} className="animate-spin" />
+                                        Cancelling...
+                                    </>
+                                ) : (
+                                    "Cancel Quest"
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

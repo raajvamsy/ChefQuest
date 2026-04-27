@@ -7,6 +7,7 @@ import { ArrowLeft, ChefHat, Loader2, Play, Check, Camera, X } from "lucide-reac
 import { recipeCache } from "@/lib/cache";
 import { geminiAgent } from "@/lib/gemini";
 import { supabase } from "@/lib/supabase";
+import BottomNav from "@/components/BottomNav";
 
 interface CookingTool {
     id: string;
@@ -463,6 +464,8 @@ export default function PrepareRecipePage() {
                     </div>
                 </div>
             )}
+
+            <BottomNav />
         </div>
     );
 }

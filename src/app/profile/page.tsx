@@ -12,9 +12,12 @@ import type { User as UserType } from "@/lib/auth-supabase";
 export default function ProfilePage() {
     const [showClearConfirm, setShowClearConfirm] = useState(false);
     const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+    const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
+    const [deletingAccount, setDeletingAccount] = useState(false);
     const [user, setUser] = useState<UserType | null>(null);
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [actionError, setActionError] = useState<string | null>(null);
 
     useEffect(() => {
         const loadProfile = async () => {
@@ -51,6 +54,38 @@ export default function ProfilePage() {
 
     const handleSignOut = () => {
         authService.signOut();
+    };
+
+    const handleDeleteAccount = async () => {
+        try {
+            setDeletingAccount(true);
+            setActionError(null);
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/user/account", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(session?.access_token
+                        ? { Authorization: `Bearer ${session.access_token}` }
+                        : {}),
+                },
+            });
+
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload?.message || "Failed to delete account.");
+            }
+
+            recipeCache.clearAll();
+            await supabase.auth.signOut();
+            window.location.href = "/login";
+        } catch (error) {
+            setActionError(error instanceof Error ? error.message : "Failed to delete account.");
+        } finally {
+            setDeletingAccount(false);
+            setShowDeleteAccountConfirm(false);
+        }
     };
 
     const displayStats = [
@@ -173,6 +208,21 @@ export default function ProfilePage() {
                                 <div className="text-sm text-text-medium">Exit your account</div>
                             </div>
                         </button>
+
+                        <div className="border-t border-border-gray/30" />
+
+                        <button 
+                            onClick={() => setShowDeleteAccountConfirm(true)}
+                            className="w-full p-5 flex items-center gap-4 hover:bg-background-muted/50 transition-colors"
+                        >
+                            <div className="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center">
+                                <Trash2 size={20} className="text-error" strokeWidth={2} />
+                            </div>
+                            <div className="flex-1 text-left">
+                                <div className="font-semibold text-error">Delete Account</div>
+                                <div className="text-sm text-text-medium">Permanently remove account and all your data</div>
+                            </div>
+                        </button>
                     </div>
                 </div>
 
@@ -232,6 +282,47 @@ export default function ProfilePage() {
                 </div>
             )}
 
+            {/* Delete Account Confirmation Modal */}
+            {showDeleteAccountConfirm && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] px-6">
+                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4">
+                        <div className="text-center space-y-2">
+                            <div className="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center mx-auto">
+                                <Trash2 size={24} className="text-error" strokeWidth={2} />
+                            </div>
+                            <h3 className="text-lg font-bold text-text-dark">Delete Account?</h3>
+                            <p className="text-sm text-text-medium">
+                                This is permanent and cannot be undone. Your profile, cooking sessions, collections,
+                                interactions, and other user data will be removed.
+                            </p>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowDeleteAccountConfirm(false)}
+                                disabled={deletingAccount}
+                                className="flex-1 py-3 rounded-2xl border border-border-gray/30 font-semibold text-text-dark hover:bg-background-muted transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteAccount}
+                                disabled={deletingAccount}
+                                className="flex-1 py-3 rounded-2xl bg-error text-white font-semibold hover:bg-error/90 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                            >
+                                {deletingAccount ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin" />
+                                        Deleting...
+                                    </>
+                                ) : (
+                                    "Delete"
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Sign Out Confirmation Modal */}
             {showSignOutConfirm && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] px-6">
@@ -260,6 +351,12 @@ export default function ProfilePage() {
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {actionError && (
+                <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[210] px-4 py-3 bg-error text-white text-sm rounded-xl shadow-lg max-w-sm text-center">
+                    {actionError}
                 </div>
             )}
 
