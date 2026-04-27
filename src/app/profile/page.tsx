@@ -100,7 +100,6 @@ export default function ProfilePage() {
                             ChefQuest
                         </button>
                         <div className="flex-1" />
-                        <span className="text-xs font-medium text-text-medium">Profile</span>
                     </div>
                 </header>
 
