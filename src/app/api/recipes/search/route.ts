@@ -77,6 +77,7 @@ export async function GET(request: Request) {
         .maybeSingle()
 
       const cachedRecipes = sharedCache?.recipes_generated
+      console.log(`[search] shared cache has ${Array.isArray(cachedRecipes) ? cachedRecipes.length : 0} recipes, need ${count}`)
       if (!sharedCacheError && Array.isArray(cachedRecipes) && cachedRecipes.length >= count) {
         const recipes = withDeterministicIds(cachedRecipes.slice(0, count), dietFilter)
         await logSearch(cacheQueryKey, diet, recipes.length, null, Date.now() - startTime)
@@ -109,6 +110,7 @@ export async function GET(request: Request) {
     }
 
     // 4. Generate new recipes with text provider router (Groq primary, Gemini fallback)
+    console.log(`[search] cache miss for "${query}", generating ${count} recipes via AI`);
     const generatedRecipesRaw = await aiRouter.searchRecipes(
       query,
       diet || undefined,
@@ -116,6 +118,7 @@ export async function GET(request: Request) {
       language,
       ingredients
     )
+    console.log(`[search] AI returned ${generatedRecipesRaw.length} recipes`)
     const generatedRecipes = withDeterministicIds(generatedRecipesRaw, dietFilter)
     const responseTime = Date.now() - startTime
 

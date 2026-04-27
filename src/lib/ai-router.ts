@@ -48,6 +48,7 @@ async function callGroqJson<T>(prompt: string): Promise<T> {
     body: JSON.stringify({
       model: GROQ_MODEL,
       temperature: 0.4,
+      max_tokens: 8192,
       messages: [
         {
           role: "system",
