@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-server'
+import { getApiUserFromRequest, toUuidOrNull } from '@/lib/api-auth'
 
 export async function POST(request: Request) {
   try {
@@ -15,18 +16,19 @@ export async function POST(request: Request) {
       correctiveStepsAdded 
     } = await request.json()
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getApiUserFromRequest(request)
+    const safeRecipeId = toUuidOrNull(recipeId)
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Store validation result
-    const { data: validation, error } = await supabase
+    const { data: validation, error } = await supabaseAdmin
       .from('step_validations')
       .insert({
         cooking_session_id: sessionId,
-        recipe_id: recipeId,
+        recipe_id: safeRecipeId,
         step_number: stepNumber,
         step_instruction: stepInstruction,
         validation_result: validationResult,
@@ -43,14 +45,14 @@ export async function POST(request: Request) {
     if (error) throw error
 
     // Update session validation counts
-    const { data: session } = await supabase
+    const { data: session } = await supabaseAdmin
       .from('cooking_sessions')
       .select('ai_validations_count, ai_validations_passed, ai_validations_failed')
       .eq('id', sessionId)
       .single()
 
     if (session) {
-      await supabase
+      await supabaseAdmin
         .from('cooking_sessions')
         .update({
           ai_validations_count: (session.ai_validations_count || 0) + 1,

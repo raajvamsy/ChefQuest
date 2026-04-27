@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { RecipeDetails } from "@/lib/gemini";
+import { RecipeDetails, TaskAdjustment } from "@/lib/gemini";
 import { ArrowLeft, Camera, Check, CheckCircle2, Circle, Loader2, X, Eye, Sparkles, AlertCircle, Lock } from "lucide-react";
 import { recipeCache } from "@/lib/cache";
 import { geminiAgent } from "@/lib/gemini";
+import { supabase } from "@/lib/supabase";
 
 interface RecipeStep {
     step_number: number | string;
@@ -42,6 +43,15 @@ export default function CookingQuestPage() {
     const [adjustmentMessage, setAdjustmentMessage] = useState<string | null>(null);
     const [cookingSessionId, setCookingSessionId] = useState<string | null>(null);
 
+    const getAuthHeaders = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+            headers.Authorization = `Bearer ${session.access_token}`;
+        }
+        return headers;
+    };
+
     useEffect(() => {
         const loadRecipe = async () => {
             const cached = recipeCache.getRecipeDetails(id);
@@ -65,9 +75,10 @@ export default function CookingQuestPage() {
                 
                 // Create cooking session
                 try {
+                    const authHeaders = await getAuthHeaders();
                     const response = await fetch('/api/cooking/session', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', ...authHeaders },
                         body: JSON.stringify({
                             recipeId: id,
                             originalSteps: cached.steps,
@@ -199,9 +210,10 @@ export default function CookingQuestPage() {
             // Log validation to database
             if (cookingSessionId) {
                 try {
+                    const authHeaders = await getAuthHeaders();
                     await fetch('/api/cooking/validation', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', ...authHeaders },
                         body: JSON.stringify({
                             sessionId: cookingSessionId,
                             recipeId: id,
@@ -245,12 +257,21 @@ export default function CookingQuestPage() {
                 instruction: s.instruction,
             }));
 
-            // Ask AI for adjustments
-            const adjustment = await geminiAgent.suggestTaskAdjustments(
-                failedStep.instruction,
-                validationResult,
-                remainingSteps
-            );
+            // Ask server-side text router (Groq primary, Gemini fallback) for adjustments
+            const adjustmentResponse = await fetch('/api/cooking/adjustments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    originalStep: failedStep.instruction,
+                    validationResult,
+                    remainingSteps,
+                }),
+            });
+            const adjustmentData = await adjustmentResponse.json();
+            if (!adjustmentResponse.ok || !adjustmentData.adjustment) {
+                throw new Error(adjustmentData.message || 'Failed to get task adjustments');
+            }
+            const adjustment: TaskAdjustment = adjustmentData.adjustment;
 
             if (adjustment.needs_adjustment) {
                 setAdjustmentMessage(adjustment.message);
@@ -312,14 +333,6 @@ export default function CookingQuestPage() {
         }
     };
 
-    if (loading || !recipe) {
-        return (
-            <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted flex items-center justify-center">
-                <Loader2 size={40} className="animate-spin text-primary" />
-            </div>
-        );
-    }
-
     const completedSteps = stepStatuses.filter((s) => s.completed).length;
     const totalSteps = stepStatuses.length;
     const progress = (completedSteps / totalSteps) * 100;
@@ -329,9 +342,10 @@ export default function CookingQuestPage() {
         if (completedSteps === totalSteps && totalSteps > 0 && cookingSessionId) {
             const markComplete = async () => {
                 try {
+                    const authHeaders = await getAuthHeaders();
                     await fetch('/api/cooking/session', {
                         method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', ...authHeaders },
                         body: JSON.stringify({
                             sessionId: cookingSessionId,
                             updates: {
@@ -349,6 +363,14 @@ export default function CookingQuestPage() {
             markComplete();
         }
     }, [completedSteps, totalSteps, cookingSessionId]);
+
+    if (loading || !recipe) {
+        return (
+            <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted flex items-center justify-center">
+                <Loader2 size={40} className="animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted pb-8">
@@ -568,7 +590,7 @@ export default function CookingQuestPage() {
                             </p>
                         </div>
                         <button
-                            onClick={() => router.push("/")}
+                            onClick={() => router.push("/home")}
                             className="px-6 py-3 bg-primary text-white rounded-2xl font-semibold hover:bg-primary-dark transition-colors"
                         >
                             Back to Home

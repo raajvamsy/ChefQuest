@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { geminiAgent, RecipeDetails } from "@/lib/gemini";
+import { RecipeDetails } from "@/lib/gemini";
 import { ArrowLeft, Clock, Users, ChefHat, Loader2, Play, AlertCircle } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { recipeCache } from "@/lib/cache";
+import { supabase } from "@/lib/supabase";
 
 function RecipeDetailContent() {
     const params = useParams();
@@ -19,6 +20,28 @@ function RecipeDetailContent() {
     const [error, setError] = useState("");
 
     useEffect(() => {
+        const logViewedInteraction = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session?.access_token) return;
+
+                await fetch('/api/recipes/interaction', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${session.access_token}`,
+                    },
+                    body: JSON.stringify({
+                        recipeId: id,
+                        interactionType: 'viewed',
+                        source: 'recipe_detail_page',
+                    }),
+                });
+            } catch (err) {
+                // Non-blocking analytics event
+            }
+        };
+
         const fetchRecipe = async () => {
             try {
                 setLoading(true);
@@ -28,12 +51,18 @@ function RecipeDetailContent() {
                 const cached = recipeCache.getRecipeDetails(id);
                 if (cached) {
                     setRecipe(cached);
+                    await logViewedInteraction();
                     setLoading(false);
                     return;
                 }
 
                 // Fetch from API if not cached
-                const response = await fetch(`/api/recipes/${id}?lang=${language}`);
+                const { data: { session } } = await supabase.auth.getSession();
+                const response = await fetch(`/api/recipes/${id}?lang=${language}`, {
+                    headers: session?.access_token
+                        ? { Authorization: `Bearer ${session.access_token}` }
+                        : {},
+                });
                 const data = await response.json();
                 
                 if (data.error) {
@@ -42,6 +71,7 @@ function RecipeDetailContent() {
                 
                 const details = data.recipe;
                 setRecipe(details);
+                await logViewedInteraction();
                 
                 // Cache the details
                 recipeCache.setRecipeDetails(id, details);

@@ -1,7 +1,19 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { supabaseAdmin } from '@/lib/supabase-server'
-import { geminiAgent } from '@/lib/gemini'
+import { aiRouter } from '@/lib/ai-router'
+import { buildDeterministicRecipeId } from '@/lib/recipe-id'
+
+function normalizeSearchText(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+function withDeterministicIds(recipes: any[], diet?: string | null) {
+  return recipes.map((recipe) => ({
+    ...recipe,
+    id: buildDeterministicRecipeId(recipe.title, diet || undefined),
+  }))
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -16,6 +28,8 @@ export async function GET(request: Request) {
 
   try {
     const startTime = Date.now()
+    const normalizedQuery = normalizeSearchText(query)
+    const dietFilter = diet || 'veg'
 
     // 1. Try to get popular recipes from database first
     if (usePopular) {
@@ -23,7 +37,7 @@ export async function GET(request: Request) {
         .from('popular_recipes')
         .select('*')
         .ilike('title', `%${query}%`)
-        .eq('diet_type', diet || 'veg')
+        .eq('diet_type', dietFilter)
         .limit(5)
 
       if (!popularError && popularRecipes && popularRecipes.length >= 3) {
@@ -38,12 +52,36 @@ export async function GET(request: Request) {
       }
     }
 
-    // 2. Check for similar recipes in database
+    // 2. Shared cache: return previously AI-generated full recipe list from DB.
+    if (usePopular) {
+      const { data: sharedCache, error: sharedCacheError } = await supabaseAdmin
+        .from('search_queries')
+        .select('recipes_generated')
+        .eq('query_text', normalizedQuery)
+        .eq('diet_filter', dietFilter)
+        .not('recipes_generated', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      const cachedRecipes = sharedCache?.recipes_generated
+      if (!sharedCacheError && Array.isArray(cachedRecipes) && cachedRecipes.length > 0) {
+        const recipes = withDeterministicIds(cachedRecipes, dietFilter)
+        await logSearch(normalizedQuery, diet, recipes.length, null, Date.now() - startTime)
+        return NextResponse.json({
+          recipes,
+          source: 'database-shared-cache',
+          cached: true,
+        })
+      }
+    }
+
+    // 3. Check for similar recipes in database
     const { data: existingRecipes, error: existingError } = await supabaseAdmin
       .from('recipes')
       .select('*')
       .textSearch('title', query, { type: 'websearch' })
-      .eq('diet_type', diet || 'veg')
+      .eq('diet_type', dietFilter)
       .order('view_count', { ascending: false })
       .limit(5)
 
@@ -57,20 +95,21 @@ export async function GET(request: Request) {
       })
     }
 
-    // 3. Generate new recipes with Gemini
-    const generatedRecipes = await geminiAgent.searchRecipes(query, diet || undefined, 6, language)
+    // 4. Generate new recipes with text provider router (Groq primary, Gemini fallback)
+    const generatedRecipesRaw = await aiRouter.searchRecipes(query, diet || undefined, 6, language)
+    const generatedRecipes = withDeterministicIds(generatedRecipesRaw, dietFilter)
     const responseTime = Date.now() - startTime
 
-    // 4. Store generated recipes in database
+    // 5. Store generated recipes in database
     const recipesToInsert = generatedRecipes.map(recipe => ({
       id: recipe.id,
       title: recipe.title,
       description: recipe.description,
       time_minutes: parseInt(recipe.time.replace(/\D/g, '')) || null,
       calories: parseInt(recipe.calories.replace(/\D/g, '')) || null,
-      diet_type: diet || 'veg',
+      diet_type: dietFilter,
       image_prompt: recipe.image_prompt,
-      gemini_model: 'gemini-2.5-flash',
+      gemini_model: aiRouter.textProviderName(),
       gemini_temperature: 0.4,
     }))
 
@@ -85,8 +124,8 @@ export async function GET(request: Request) {
       }
     }
 
-    // 5. Log search query
-    await logSearch(query, diet, generatedRecipes.length, generatedRecipes, responseTime)
+    // 6. Log search query + persist full generated recipe payload as shared cache.
+    await logSearch(normalizedQuery, diet, generatedRecipes.length, generatedRecipes, responseTime)
 
     return NextResponse.json({ 
       recipes: generatedRecipes, 
@@ -119,7 +158,7 @@ async function logSearch(
       diet_filter: diet,
       recipes_count: count,
       recipes_generated: recipes || undefined,
-      gemini_model_used: recipes ? 'gemini-2.5-flash' : null,
+      gemini_model_used: recipes ? aiRouter.textProviderName() : null,
       response_time_ms: responseTime,
       session_id: user?.id || null,
     })

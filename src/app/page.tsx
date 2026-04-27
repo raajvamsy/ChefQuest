@@ -1,7 +1,48 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { ChefHat, Sparkles, Camera, Brain, Shield, Zap } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 export default function LandingPage() {
+  const router = useRouter();
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!isMounted) return;
+
+      if (session?.user) {
+        router.replace("/home");
+        return;
+      }
+
+      setCheckingAuth(false);
+    };
+
+    checkSession();
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <ChefHat size={36} className="text-primary mx-auto" strokeWidth={2} />
+          <p className="text-text-medium">Loading ChefQuest...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted">
       {/* Header */}

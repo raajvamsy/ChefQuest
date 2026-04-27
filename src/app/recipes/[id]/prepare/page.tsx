@@ -6,6 +6,7 @@ import { RecipeDetails } from "@/lib/gemini";
 import { ArrowLeft, ChefHat, Loader2, Play, Check, Camera, X } from "lucide-react";
 import { recipeCache } from "@/lib/cache";
 import { geminiAgent } from "@/lib/gemini";
+import { supabase } from "@/lib/supabase";
 
 interface CookingTool {
     id: string;
@@ -52,6 +53,15 @@ export default function PrepareRecipePage() {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
+    const getAuthHeaders = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+            headers.Authorization = `Bearer ${session.access_token}`;
+        }
+        return headers;
+    };
+
     useEffect(() => {
         const loadRecipe = async () => {
             const cached = recipeCache.getRecipeDetails(id);
@@ -62,9 +72,10 @@ export default function PrepareRecipePage() {
                 
                 // Log prepare_started interaction
                 try {
+                    const authHeaders = await getAuthHeaders();
                     await fetch('/api/recipes/interaction', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', ...authHeaders },
                         body: JSON.stringify({
                             recipeId: id,
                             interactionType: 'prepare_started',

@@ -1,21 +1,26 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-server'
+import { getApiUserFromRequest, toUuidOrNull } from '@/lib/api-auth'
+import { toRecipeKey } from '@/lib/recipe-key'
 
 export async function POST(request: Request) {
   try {
     const { recipeId, originalSteps } = await request.json()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getApiUserFromRequest(request)
+    const safeRecipeId = toUuidOrNull(recipeId)
+    const recipeKey = toRecipeKey(recipeId)
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Create cooking session
-    const { data: session, error } = await supabase
+    const { data: session, error } = await supabaseAdmin
       .from('cooking_sessions')
       .insert({
         user_id: user.id,
-        recipe_id: recipeId,
+        recipe_id: safeRecipeId,
+        recipe_key: recipeKey,
         session_status: 'in_progress',
         original_steps_count: originalSteps.length,
         current_steps: originalSteps,
@@ -29,9 +34,10 @@ export async function POST(request: Request) {
     if (error) throw error
 
     // Log interaction
-    await supabase.from('user_recipe_interactions').insert({
+    await supabaseAdmin.from('user_recipe_interactions').insert({
       user_id: user.id,
-      recipe_id: recipeId,
+      recipe_id: safeRecipeId,
+      recipe_key: recipeKey,
       interaction_type: 'cook_started',
       source: 'cooking_page',
     })
@@ -48,7 +54,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const { sessionId, updates } = await request.json()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getApiUserFromRequest(request)
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -56,7 +62,7 @@ export async function PATCH(request: Request) {
 
     // Calculate duration if completing
     if (updates.session_status === 'completed' && updates.completed_at) {
-      const { data: session } = await supabase
+      const { data: session } = await supabaseAdmin
         .from('cooking_sessions')
         .select('started_at')
         .eq('id', sessionId)
@@ -70,7 +76,7 @@ export async function PATCH(request: Request) {
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('cooking_sessions')
       .update(updates)
       .eq('id', sessionId)
@@ -82,16 +88,17 @@ export async function PATCH(request: Request) {
 
     // Log completion interaction
     if (updates.session_status === 'completed') {
-      const { data: session } = await supabase
+      const { data: session } = await supabaseAdmin
         .from('cooking_sessions')
-        .select('recipe_id')
+        .select('recipe_id, recipe_key')
         .eq('id', sessionId)
         .single()
 
       if (session) {
-        await supabase.from('user_recipe_interactions').insert({
+        await supabaseAdmin.from('user_recipe_interactions').insert({
           user_id: user.id,
           recipe_id: session.recipe_id,
+          recipe_key: session.recipe_key,
           interaction_type: 'completed',
           source: 'cooking_page',
         })

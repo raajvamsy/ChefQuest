@@ -5,6 +5,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { User, ChefHat, Clock, Trophy, Settings, Trash2, LogOut, Loader2 } from "lucide-react";
 import { recipeCache } from "@/lib/cache";
 import { authService } from "@/lib/auth-supabase";
+import { supabase } from "@/lib/supabase";
 import { useState, useEffect } from "react";
 import type { User as UserType } from "@/lib/auth-supabase";
 
@@ -22,7 +23,12 @@ export default function ProfilePage() {
                 setUser(currentUser);
 
                 // Fetch user stats from API
-                const response = await fetch('/api/user/stats');
+                const { data: { session } } = await supabase.auth.getSession();
+                const response = await fetch('/api/user/stats', {
+                    headers: session?.access_token
+                        ? { Authorization: `Bearer ${session.access_token}` }
+                        : {},
+                });
                 if (response.ok) {
                     const data = await response.json();
                     setStats(data);

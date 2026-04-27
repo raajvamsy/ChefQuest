@@ -26,6 +26,15 @@ interface RecipeDetailsCache {
 
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
+function hashString(input: string): string {
+  // Fast deterministic hash (djb2 variant) for stable cache keys.
+  let hash = 5381;
+  for (let i = 0; i < input.length; i++) {
+    hash = ((hash << 5) + hash) ^ input.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 export const recipeCache = {
   /**
    * Get cached recipes for a search query
@@ -113,13 +122,14 @@ export const recipeCache = {
       if (!cached) return null;
 
       const cache: RecipeDetailsCache = JSON.parse(cached);
-      const entry = cache[id];
+      const cacheId = hashString(id);
+      const entry = cache[cacheId];
 
       if (!entry) return null;
 
       // Check if cache is still valid
       if (Date.now() - entry.timestamp > CACHE_DURATION) {
-        delete cache[id];
+        delete cache[cacheId];
         sessionStorage.setItem(RECIPE_DETAILS_CACHE_KEY, JSON.stringify(cache));
         return null;
       }
@@ -140,7 +150,8 @@ export const recipeCache = {
       const cached = sessionStorage.getItem(RECIPE_DETAILS_CACHE_KEY);
       const cache: RecipeDetailsCache = cached ? JSON.parse(cached) : {};
 
-      cache[id] = {
+      const cacheId = hashString(id);
+      cache[cacheId] = {
         recipe,
         timestamp: Date.now(),
       };
@@ -169,7 +180,8 @@ export const recipeCache = {
    * Generate cache key for recipes search
    */
   getRecipesCacheKey(query: string, diet?: string, language?: string): string {
-    return `${query.toLowerCase()}_${diet || "all"}_${language || "en"}`;
+    const raw = `${query.toLowerCase()}_${diet || "all"}_${language || "en"}`;
+    return hashString(raw);
   },
 };
 

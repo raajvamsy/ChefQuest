@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
-import { geminiAgent } from '@/lib/gemini'
+import { aiRouter } from '@/lib/ai-router'
+
+function titleFromRecipeId(recipeId: string): string {
+  // Strip deterministic hash suffix (<slug>-<12hex>) when present.
+  const cleanedId = recipeId.replace(/-[a-f0-9]{12}$/i, '')
+  return cleanedId
+    .split('-')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
 
 export async function GET(
   request: Request,
@@ -19,19 +29,14 @@ export async function GET(
       .single()
 
     if (!error && recipe) {
-      // Log interaction
-      await logInteraction(id, 'viewed')
-
       return NextResponse.json({ recipe, source: 'database' })
     }
 
-    // 2. If not in database, generate with Gemini
-    // Extract title from ID (kebab-case-id format)
-    const title = id.split('-').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ')
+    // 2. If not in database, generate with text provider router (Groq primary)
+    // Extract clean human-readable title from hashed ID.
+    const title = titleFromRecipeId(id)
 
-    const recipeDetails = await geminiAgent.getRecipeDetails(id, title, language)
+    const recipeDetails = await aiRouter.getRecipeDetails(id, title, language)
 
     // 3. Store in database
     await supabase.from('recipes').upsert({
@@ -44,11 +49,8 @@ export async function GET(
       ingredients: recipeDetails.ingredients,
       steps: recipeDetails.steps,
       image_prompt: recipeDetails.image_prompt,
-      gemini_model: 'gemini-2.5-flash',
+      gemini_model: aiRouter.textProviderName(),
     }, { onConflict: 'id' })
-
-    // Log interaction
-    await logInteraction(id, 'viewed')
 
     return NextResponse.json({ recipe: recipeDetails, source: 'ai' })
   } catch (error) {
@@ -59,19 +61,3 @@ export async function GET(
   }
 }
 
-async function logInteraction(recipeId: string, type: string) {
-  try {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (user) {
-      await supabase.from('user_recipe_interactions').insert({
-        user_id: user.id,
-        recipe_id: recipeId,
-        interaction_type: type,
-        source: 'direct',
-      })
-    }
-  } catch (error) {
-    // Silently fail
-  }
-}

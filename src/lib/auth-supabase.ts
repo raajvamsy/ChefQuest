@@ -19,6 +19,20 @@ export interface User {
 }
 
 export const authService = {
+  getOAuthRedirectUrl() {
+    // Prefer explicit app URL so production never falls back to localhost origins.
+    const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
+    if (configuredUrl) {
+      return `${configuredUrl.replace(/\/$/, '')}/auth/callback`
+    }
+
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/auth/callback`
+    }
+
+    return '/auth/callback'
+  },
+
   /**
    * Sign in with Google OAuth
    */
@@ -26,7 +40,7 @@ export const authService = {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: this.getOAuthRedirectUrl(),
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',

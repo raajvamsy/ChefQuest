@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { geminiAgent, Recipe } from "@/lib/gemini";
+import { Recipe } from "@/lib/gemini";
 import { ArrowLeft, Clock, Flame, Loader2, ChefHat, AlertCircle } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { recipeCache } from "@/lib/cache";

@@ -1,20 +1,25 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-server'
+import { getApiUserFromRequest, toUuidOrNull } from '@/lib/api-auth'
+import { toRecipeKey } from '@/lib/recipe-key'
 
 export async function POST(request: Request) {
   try {
     const { recipeId, interactionType, source, searchQueryId } = await request.json()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getApiUserFromRequest(request)
+    const safeRecipeId = toUuidOrNull(recipeId)
+    const recipeKey = toRecipeKey(recipeId)
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('user_recipe_interactions')
       .insert({
         user_id: user.id,
-        recipe_id: recipeId,
+        recipe_id: safeRecipeId,
+        recipe_key: recipeKey,
         interaction_type: interactionType,
         source: source || 'unknown',
         search_query_id: searchQueryId || null,

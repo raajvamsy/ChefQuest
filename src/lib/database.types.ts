@@ -33,6 +33,7 @@ export type Database = {
           original_steps_count: number
           paused_duration_minutes: number | null
           recipe_id: string | null
+          recipe_key: string | null
           servings_adjusted: boolean | null
           session_status: string | null
           started_at: string | null
@@ -65,6 +66,7 @@ export type Database = {
           original_steps_count: number
           paused_duration_minutes?: number | null
           recipe_id?: string | null
+          recipe_key?: string | null
           servings_adjusted?: boolean | null
           session_status?: string | null
           started_at?: string | null
@@ -97,6 +99,7 @@ export type Database = {
           original_steps_count?: number
           paused_duration_minutes?: number | null
           recipe_id?: string | null
+          recipe_key?: string | null
           servings_adjusted?: boolean | null
           session_status?: string | null
           started_at?: string | null
@@ -1484,6 +1487,7 @@ export type Database = {
           interaction_type: string
           position_in_results: number | null
           recipe_id: string | null
+          recipe_key: string | null
           search_query_id: string | null
           source: string | null
           user_id: string | null
@@ -1494,6 +1498,7 @@ export type Database = {
           interaction_type: string
           position_in_results?: number | null
           recipe_id?: string | null
+          recipe_key?: string | null
           search_query_id?: string | null
           source?: string | null
           user_id?: string | null
@@ -1504,6 +1509,7 @@ export type Database = {
           interaction_type?: string
           position_in_results?: number | null
           recipe_id?: string | null
+          recipe_key?: string | null
           search_query_id?: string | null
           source?: string | null
           user_id?: string | null
