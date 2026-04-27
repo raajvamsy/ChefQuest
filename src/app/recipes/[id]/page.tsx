@@ -124,14 +124,12 @@ function RecipeDetailContent() {
             </header>
 
             {/* Content */}
-            <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+            <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-4">
 
-                {/* Hero card — title + meta + CTA */}
+                {/* Hero card — full width */}
                 <div className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-6 space-y-5">
                     <div className="space-y-3">
                         <h1 className="text-2xl font-bold text-text-dark leading-tight">{recipe.title}</h1>
-
-                        {/* Meta row */}
                         <div className="flex flex-wrap items-center gap-3">
                             <div className="flex items-center gap-1.5 text-sm text-text-medium">
                                 <Clock size={14} className="text-primary shrink-0" strokeWidth={2} />
@@ -146,7 +144,6 @@ function RecipeDetailContent() {
                             </span>
                         </div>
                     </div>
-
                     <button
                         onClick={() => router.push(`/recipes/${id}/prepare`)}
                         className="w-full py-3.5 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-all shadow-sm hover:shadow-md active:scale-[0.98] flex items-center justify-center gap-2"
@@ -156,44 +153,48 @@ function RecipeDetailContent() {
                     </button>
                 </div>
 
-                {/* About */}
-                {recipe.description && (
-                    <div className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-5 space-y-2">
-                        <h2 className="text-[11px] font-semibold text-text-medium uppercase tracking-widest">About</h2>
-                        <p className="text-sm text-text-dark leading-relaxed">{recipe.description}</p>
-                    </div>
-                )}
+                {/* 2-column layout */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 items-start">
 
-                {/* Ingredients */}
-                <div className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-5 space-y-4">
-                    <h2 className="text-base font-bold text-text-dark">Ingredients</h2>
-                    <ul className="space-y-3">
-                        {recipe.ingredients.map((ingredient, index) => (
-                            <li key={index} className="flex items-start gap-3">
-                                <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" />
-                                <span className="text-sm text-text-dark">
-                                    <span className="font-semibold">{ingredient.quantity}</span>
-                                    <span className="text-text-medium"> {ingredient.item}</span>
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-
-                {/* Instructions */}
-                <div className="space-y-3 pb-6">
-                    <h2 className="text-base font-bold text-text-dark px-1">Instructions</h2>
-                    {recipe.steps.map((step) => (
-                        <div
-                            key={step.step_number}
-                            className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-5 flex gap-4 hover:border-primary/20 transition-colors"
-                        >
-                            <div className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                                {step.step_number}
+                    {/* Left: About + Ingredients */}
+                    <div className="space-y-4">
+                        {recipe.description && (
+                            <div className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-5 space-y-2">
+                                <h2 className="text-[11px] font-semibold text-text-medium uppercase tracking-widest">About</h2>
+                                <p className="text-sm text-text-dark leading-relaxed">{recipe.description}</p>
                             </div>
-                            <p className="text-sm text-text-dark leading-relaxed flex-1">{step.instruction}</p>
+                        )}
+                        <div className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-5 space-y-4">
+                            <h2 className="text-base font-bold text-text-dark">Ingredients</h2>
+                            <ul className="space-y-3">
+                                {recipe.ingredients.map((ingredient, index) => (
+                                    <li key={index} className="flex items-start gap-3">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" />
+                                        <span className="text-sm text-text-dark">
+                                            <span className="font-semibold">{ingredient.quantity}</span>
+                                            <span className="text-text-medium"> {ingredient.item}</span>
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
-                    ))}
+                    </div>
+
+                    {/* Right: Instructions */}
+                    <div className="space-y-3">
+                        <h2 className="text-base font-bold text-text-dark px-1">Instructions</h2>
+                        {recipe.steps.map((step) => (
+                            <div
+                                key={step.step_number}
+                                className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-5 flex gap-4 hover:border-primary/20 transition-colors"
+                            >
+                                <div className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                                    {step.step_number}
+                                </div>
+                                <p className="text-sm text-text-dark leading-relaxed flex-1">{step.instruction}</p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </main>
         </div>
