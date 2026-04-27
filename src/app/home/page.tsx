@@ -126,12 +126,12 @@ export default function AppHome() {
           </p>
         </div>
 
-        {/* Search Setup */}
-        <div className="space-y-5">
+        {/* Search Card */}
+        <div className="bg-white rounded-3xl border border-border-gray/20 shadow-sm p-5 space-y-4">
           {/* Diet Toggle & Language Selector */}
           <div className="flex flex-col items-center gap-4">
             {/* Diet Toggle */}
-            <div className="relative inline-flex items-center bg-white border border-border-gray/30 rounded-full p-1 shadow-sm">
+            <div className="relative inline-flex items-center bg-background-muted/60 border border-border-gray/20 rounded-full p-1">
               {/* Sliding background */}
               <div
                 className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-primary rounded-full transition-all duration-300 ease-out shadow-sm ${
@@ -162,7 +162,7 @@ export default function AppHome() {
             </div>
 
             {/* Language Selector */}
-            <div className="relative inline-flex items-center bg-white border border-border-gray/30 rounded-2xl px-4 py-2.5 shadow-sm">
+            <div className="relative inline-flex items-center bg-background-muted/40 border border-border-gray/20 rounded-2xl px-4 py-2.5">
               <Languages size={18} className="text-primary mr-2" strokeWidth={2} />
               <select
                 value={language}
@@ -183,50 +183,66 @@ export default function AppHome() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="relative group flex-1">
-                <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-text-medium group-focus-within:text-primary transition-colors">
-                  <Search size={20} strokeWidth={2} />
-                </div>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search dish"
-                  className="w-full py-4 pl-14 pr-5 rounded-2xl bg-white border border-border-gray/30 text-text-dark placeholder:text-text-medium/60 focus:outline-none focus:border-primary/50 focus:shadow-[0_0_0_3px_rgba(14,71,1,0.1)] transition-all duration-200"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleUnifiedSearch();
-                    }
-                  }}
-                />
+          {/* Search row */}
+          <div className="flex items-center gap-2">
+            <div className="relative group flex-1">
+              <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-text-medium group-focus-within:text-primary transition-colors">
+                <Search size={20} strokeWidth={2} />
               </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search recipes — e.g. paneer curry"
+                className="w-full py-4 pl-14 pr-5 rounded-2xl bg-background-muted/40 border border-border-gray/20 text-text-dark placeholder:text-text-medium/60 focus:outline-none focus:border-primary/50 focus:shadow-[0_0_0_3px_rgba(14,71,1,0.1)] transition-all duration-200"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleUnifiedSearch();
+                  }
+                }}
+              />
+            </div>
+            <button
+              onClick={() => handleUnifiedSearch()}
+              disabled={!searchQuery.trim() && selectedIngredients.length === 0}
+              className="px-5 py-4 rounded-2xl bg-primary/80 text-white text-sm font-semibold disabled:opacity-45 disabled:cursor-not-allowed hover:bg-primary transition-colors duration-200"
+            >
+              Search
+            </button>
+          </div>
+        </div>
+
+        {/* Ingredients trigger — below the card, centered */}
+        <div className="flex justify-center">
+          <button
+            onClick={() => setShowIngredientsSheet(true)}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-border-gray/30 text-sm font-semibold text-text-dark shadow-sm hover:border-primary/40 hover:text-primary hover:shadow-md active:scale-95 transition-all duration-200"
+          >
+            <Plus size={16} strokeWidth={2.5} />
+            <span>
+              {selectedIngredients.length > 0
+                ? `+ ${selectedIngredients.length}`
+                : "Search by ingredients"}
+            </span>
+          </button>
+        </div>
+
+        {/* Popular searches */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 px-1">
+            <Sparkles size={16} className="text-primary" strokeWidth={2} />
+            <span className="text-sm font-medium text-text-medium">Popular searches</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {quickSearches.map((search) => (
               <button
-                onClick={() => handleUnifiedSearch()}
-                disabled={!searchQuery.trim() && selectedIngredients.length === 0}
-                className="px-4 py-4 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-45 disabled:cursor-not-allowed"
+                key={search}
+                onClick={() => handleUnifiedSearch(search)}
+                className="px-5 py-2.5 rounded-full bg-white border border-border-gray/30 text-sm font-medium text-text-dark hover:border-primary hover:text-primary hover:shadow-sm active:scale-95 transition-all duration-200"
               >
-                Search
+                {search}
               </button>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 px-1">
-                <Sparkles size={16} className="text-primary" strokeWidth={2} />
-                <span className="text-sm font-medium text-text-medium">Popular searches</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {quickSearches.map((search) => (
-                  <button
-                    key={search}
-                    onClick={() => handleUnifiedSearch(search)}
-                    className="px-5 py-2.5 rounded-full bg-white border border-border-gray/30 text-sm font-medium text-text-dark hover:border-primary hover:text-primary hover:shadow-sm active:scale-95 transition-all duration-200"
-                  >
-                    {search}
-                  </button>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
@@ -269,19 +285,6 @@ export default function AppHome() {
       </main>
 
       <BottomNav />
-
-      {/* Ingredients Quick Action */}
-      <button
-        onClick={() => {
-          setShowIngredientsSheet(true);
-        }}
-        className="fixed bottom-32 right-6 z-[110] bg-primary text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl active:scale-95 transition-all duration-200 flex items-center gap-2"
-      >
-        <Plus size={18} strokeWidth={2.5} />
-        <span className="text-sm font-semibold">
-          {selectedIngredients.length > 0 ? `${selectedIngredients.length}` : "Ingredients"}
-        </span>
-      </button>
 
       {/* Ingredients Bottom Sheet */}
       {showIngredientsSheet && (
