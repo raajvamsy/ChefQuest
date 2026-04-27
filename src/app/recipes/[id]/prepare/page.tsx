@@ -3,11 +3,10 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { RecipeDetails } from "@/lib/gemini";
-import { ArrowLeft, ChefHat, Loader2, Play, Check, Camera, X } from "lucide-react";
+import { ArrowLeft, ChefHat, Loader2, Play, Check, Camera, X, User } from "lucide-react";
 import { recipeCache } from "@/lib/cache";
 import { geminiAgent } from "@/lib/gemini";
 import { supabase } from "@/lib/supabase";
-import BottomNav from "@/components/BottomNav";
 
 interface CookingTool {
     id: string;
@@ -226,67 +225,74 @@ export default function PrepareRecipePage() {
 
     if (loading || !recipe) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted flex items-center justify-center">
-                <div className="relative flex items-center justify-center w-16 h-16">
-                    <Loader2 size={40} className="animate-spin text-primary absolute" strokeWidth={2.5} />
-                    <ChefHat size={20} className="text-primary relative z-10" strokeWidth={2} />
+            <div className="min-h-screen bg-background-muted flex items-center justify-center">
+                <div className="relative flex items-center justify-center w-14 h-14">
+                    <Loader2 size={36} className="animate-spin text-primary absolute" strokeWidth={2} />
+                    <ChefHat size={18} className="text-primary relative z-10" strokeWidth={2} />
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted pb-24">
-            {/* Sticky Header */}
-            <div className="sticky top-0 bg-white/90 backdrop-blur-md border-b border-border-gray/30 z-50 shadow-sm">
-                <div className="max-w-2xl mx-auto px-6 py-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <button
-                            onClick={() => router.back()}
-                            className="p-2 rounded-full hover:bg-background-muted/50 text-text-dark transition-all flex-shrink-0"
-                        >
-                            <ArrowLeft size={20} strokeWidth={2} />
-                        </button>
-                        <div className="flex-1 min-w-0 overflow-hidden">
-                            <h1 className="text-base font-semibold text-primary text-wrap">Prepare to Cook</h1>
-                            <p className="text-xs text-text-medium text-wrap">{recipe.title}</p>
-                        </div>
+        <div className="min-h-screen bg-background-muted flex flex-col">
+            {/* Header */}
+            <header className="sticky top-0 z-40 bg-white border-b border-border-gray/15">
+                <div className="w-full px-4 h-14 flex items-center gap-3">
+                    <button
+                        onClick={() => router.back()}
+                        className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-background-muted text-text-dark transition-colors shrink-0"
+                    >
+                        <ArrowLeft size={18} strokeWidth={2} />
+                    </button>
+                    <button
+                        onClick={() => router.push("/home")}
+                        className="text-lg font-bold text-primary tracking-tight shrink-0"
+                    >
+                        ChefQuest
+                    </button>
+                    <div className="flex-1 min-w-0">
+                        <span className="text-xs font-medium text-text-medium truncate block">{recipe.title}</span>
                     </div>
+                    <button
+                        onClick={() => router.push("/profile")}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border-gray/30 text-xs font-semibold text-text-medium hover:text-text-dark hover:border-border-gray/60 transition-colors shrink-0"
+                    >
+                        <User size={14} strokeWidth={2} />
+                        <span className="hidden sm:inline">Profile</span>
+                    </button>
                 </div>
-            </div>
+            </header>
 
-            <div className="max-w-2xl mx-auto px-6 py-8 space-y-8">
+            <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5 pb-8">
                 {/* Introduction */}
-                <div className="bg-white border border-border-gray/30 rounded-2xl p-6 space-y-3">
+                <div className="bg-white border border-border-gray/20 rounded-2xl shadow-sm p-5">
                     <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                            <ChefHat size={24} className="text-primary" strokeWidth={2} />
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <ChefHat size={20} className="text-primary" strokeWidth={2} />
                         </div>
                         <div className="flex-1">
-                            <h2 className="text-lg font-bold text-text-dark mb-2">
-                                Let's get prepared!
-                            </h2>
+                            <h2 className="text-base font-bold text-text-dark mb-1">Let&apos;s get prepared!</h2>
                             <p className="text-sm text-text-medium leading-relaxed">
-                                Select the cooking tools and utensils you have available. We'll customize the 
-                                cooking instructions based on your equipment.
+                                Select the cooking tools you have available. We&apos;ll customize the instructions based on your equipment.
                             </p>
                         </div>
                     </div>
                 </div>
 
                 {/* Tool Selection */}
-                <div className="space-y-4">
+                <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-bold text-text-dark">Your Kitchen Tools</h3>
+                        <h3 className="text-base font-bold text-text-dark">Your Kitchen Tools</h3>
                         <button
                             onClick={startCamera}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
                         >
-                            <Camera size={16} strokeWidth={2} />
+                            <Camera size={13} strokeWidth={2} />
                             <span>Scan Tools</span>
                         </button>
                     </div>
-                    
+
                     {isAnalyzing && (
                         <div className="flex items-center gap-2 text-xs text-text-medium">
                             <Loader2 size={12} className="animate-spin" />
@@ -294,18 +300,17 @@ export default function PrepareRecipePage() {
                         </div>
                     )}
 
-                    {/* Suggested Tools */}
                     {suggestedTools.length > 0 && (
-                        <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 space-y-2">
-                            <p className="text-sm font-semibold text-primary flex items-center gap-2">
-                                <Check size={16} strokeWidth={2} />
-                                Recommended for this recipe
+                        <div className="bg-primary/5 border border-primary/20 rounded-xl px-4 py-2.5">
+                            <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                                <Check size={13} strokeWidth={2.5} />
+                                Recommended tools pre-selected for this recipe
                             </p>
                         </div>
                     )}
 
-                    {/* Tool Grid */}
-                    <div className="grid grid-cols-2 gap-3">
+                    {/* Tool Grid — 4 per row on desktop */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                         {commonTools.map((tool) => {
                             const isSelected = selectedTools.has(tool.id);
                             const isSuggested = suggestedTools.includes(tool.id);
@@ -356,33 +361,23 @@ export default function PrepareRecipePage() {
                     </div>
                 </div>
 
-                {/* Summary */}
-                <div className="bg-background-muted border border-border-gray/30 rounded-2xl p-5">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-text-medium">Selected tools</p>
-                            <p className="text-2xl font-bold text-primary">{selectedTools.size}</p>
-                        </div>
-                        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                            <ChefHat size={32} className="text-primary" strokeWidth={2} />
-                        </div>
+                {/* Footer: summary + CTA */}
+                <div className="bg-white border border-border-gray/20 rounded-2xl shadow-sm p-5 flex items-center gap-4">
+                    <div className="flex-1">
+                        <p className="text-xs text-text-medium">Selected tools</p>
+                        <p className="text-2xl font-bold text-primary">{selectedTools.size}</p>
+                        <p className="text-[11px] text-text-medium mt-0.5">You can always adapt as you go.</p>
                     </div>
+                    <button
+                        onClick={handleStartCooking}
+                        disabled={selectedTools.size === 0}
+                        className="py-3 px-6 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-all shadow-sm hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shrink-0"
+                    >
+                        <Play size={16} strokeWidth={2.5} fill="white" />
+                        <span>Start Cooking</span>
+                    </button>
                 </div>
-
-                {/* Start Cooking Button */}
-                <button
-                    onClick={handleStartCooking}
-                    disabled={selectedTools.size === 0}
-                    className="w-full py-4 bg-primary text-white rounded-2xl font-semibold hover:bg-primary-dark transition-all shadow-sm hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                    <Play size={20} strokeWidth={2.5} fill="white" />
-                    <span>Start Cooking Quest</span>
-                </button>
-
-                <p className="text-center text-xs text-text-medium">
-                    Don't worry! You can always adapt as you go.
-                </p>
-            </div>
+            </main>
 
             {/* Camera Modal */}
             {cameraActive && (
@@ -465,7 +460,6 @@ export default function PrepareRecipePage() {
                 </div>
             )}
 
-            <BottomNav />
         </div>
     );
 }
