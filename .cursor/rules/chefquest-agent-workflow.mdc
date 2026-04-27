@@ -1,0 +1,37 @@
+---
+description: ChefQuest execution and deployment workflow
+globs:
+alwaysApply: true
+---
+
+# ChefQuest Agent Workflow (Mandatory)
+
+When working in this repository, follow this operational sequence by default:
+
+1. **Implement fully, then verify**
+   - Do not stop at code edits only.
+   - Run `npm run build` after meaningful changes.
+   - Fix build/type errors before concluding.
+
+2. **Supabase-first debugging**
+   - For API/data issues, inspect and verify data directly in Supabase.
+   - Use Supabase MCP SQL (`execute_sql`) to confirm root cause and validate fixes.
+   - Prefer deterministic verification queries over assumptions.
+
+3. **Auth-aware API testing**
+   - If API routes require authentication, include bearer token tests.
+   - Distinguish expected `401` (no token) from real server failures.
+
+4. **Vercel deployment requirement**
+   - After successful local build, deploy to production with Vercel CLI:
+     - `npx vercel --prod --yes --scope raajvamsys-projects`
+   - Share both production alias and deployment URL in final output.
+
+5. **Production smoke checks**
+   - Re-test the exact failing endpoint/flow after deploy.
+   - Confirm responses and key paths used by user flows (search, recipe details, prepare/cooking interactions, profile stats).
+
+6. **No silent partial completion**
+   - If push/deploy/auth fails, report exact blocker and actionable next step.
+   - Do not mark task done unless build + deploy + critical verification are complete.
+
