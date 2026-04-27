@@ -2,7 +2,17 @@
 
 import BottomNav from "@/components/BottomNav";
 import InstallPWA from "@/components/InstallPWA";
-import { Search, Sparkles, ChefHat, Zap, Languages, Plus, X } from "lucide-react";
+import {
+  Search,
+  Languages,
+  Plus,
+  X,
+  ArrowRight,
+  Leaf,
+  Timer,
+  ChefHat,
+  GlassWater,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -13,7 +23,7 @@ const LANGUAGES = [
   { code: "te", name: "Telugu (తెలుగు)" },
   { code: "mr", name: "Marathi (मराठी)" },
   { code: "bn", name: "Bengali (বাংলা)" },
-  { code: "gu", name: "Gujarati (ગુજરાતી)" },
+  { code: "gu", name: "Gujarati (ગુજรાતી)" },
   { code: "kn", name: "Kannada (ಕನ್ನಡ)" },
   { code: "ml", name: "Malayalam (മലയാളം)" },
   { code: "pa", name: "Punjabi (ਪੰਜਾਬੀ)" },
@@ -29,6 +39,13 @@ const LANGUAGES = [
   { code: "ru", name: "Russian (Русский)" },
 ];
 
+const CATEGORIES = [
+  { id: "vegetarian", label: "Vegetarian", Icon: Leaf, query: "vegetarian recipes", diet: "veg" as const },
+  { id: "quick-meals", label: "Quick Meals", Icon: Timer, query: "quick meals under 30 minutes", diet: "veg" as const },
+  { id: "baking", label: "Baking", Icon: ChefHat, query: "baking recipes", diet: "veg" as const },
+  { id: "smoothies", label: "Smoothies", Icon: GlassWater, query: "smoothie recipes", diet: "veg" as const },
+];
+
 export default function AppHome() {
   const router = useRouter();
   const [diet, setDiet] = useState<"veg" | "non-veg">("veg");
@@ -39,29 +56,17 @@ export default function AppHome() {
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
 
   const suggestedIngredients = [
-    "Onion",
-    "Tomato",
-    "Garlic",
-    "Ginger",
-    "Egg",
-    "Potato",
-    "Rice",
-    "Milk",
-    "Cheese",
-    "Spinach",
+    "Onion", "Tomato", "Garlic", "Ginger", "Egg",
+    "Potato", "Rice", "Milk", "Cheese", "Spinach",
   ];
-
-  const quickSearches = ["Pasta", "Curry", "Salad", "Soup", "Dessert"];
 
   const addIngredient = (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) return;
-
     const alreadyExists = selectedIngredients.some(
       (item) => item.toLowerCase() === trimmed.toLowerCase(),
     );
     if (alreadyExists) return;
-
     setSelectedIngredients((prev) => [...prev, trimmed]);
     setIngredientInput("");
   };
@@ -70,7 +75,7 @@ export default function AppHome() {
     setSelectedIngredients((prev) => prev.filter((item) => item !== value));
   };
 
-  const handleUnifiedSearch = (queryOverride?: string) => {
+  const handleUnifiedSearch = (queryOverride?: string, dietOverride?: "veg" | "non-veg") => {
     const trimmedQuery = (queryOverride ?? searchQuery).trim();
     const hasIngredients = selectedIngredients.length > 0;
     if (!trimmedQuery && !hasIngredients) return;
@@ -79,7 +84,6 @@ export default function AppHome() {
     let mode = "query_only";
 
     if (!trimmedQuery && hasIngredients) {
-      // Keep a stable neutral query; ingredient constraints are passed separately.
       query = "ingredient based recipes";
       mode = "ingredients_only";
     } else if (trimmedQuery && hasIngredients) {
@@ -88,7 +92,7 @@ export default function AppHome() {
 
     const params = new URLSearchParams({
       q: query,
-      diet,
+      diet: dietOverride ?? diet,
       lang: language,
       mode,
     });
@@ -102,72 +106,22 @@ export default function AppHome() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted pb-24">
-      {/* PWA Install Button */}
+    <div className="min-h-screen flex flex-col pb-20">
       <InstallPWA />
-      
-      {/* Sticky Header */}
-      <div className="sticky top-0 bg-gradient-to-b from-background-light to-background-light/95 backdrop-blur-sm border-b border-border-gray/20 z-40 shadow-sm">
-        <div className="max-w-md mx-auto px-6 py-4">
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-1 h-6 bg-primary rounded-full" />
-            <h1 className="text-2xl font-bold text-primary tracking-tight">ChefQuest</h1>
-            <div className="w-1 h-6 bg-primary rounded-full" />
-          </div>
-        </div>
-      </div>
 
-      <main className="max-w-md mx-auto px-6 pt-8 flex flex-col space-y-4">
-        
-        {/* Tagline */}
-        <div className="text-center">
-          <p className="text-text-medium text-base">
-            Discover recipes tailored to your taste
-          </p>
-        </div>
+      {/* Top Nav */}
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-border-gray/15">
+        <div className="max-w-screen-lg mx-auto px-6 h-14 flex items-center justify-between">
+          <span className="text-lg font-bold text-primary tracking-tight">ChefQuest</span>
 
-        {/* Search Card */}
-        <div className="bg-white rounded-3xl border border-border-gray/20 shadow-sm p-5 space-y-4">
-          {/* Diet Toggle & Language Selector */}
-          <div className="flex flex-col items-center gap-4">
-            {/* Diet Toggle */}
-            <div className="relative inline-flex items-center bg-background-muted/60 border border-border-gray/20 rounded-full p-1">
-              {/* Sliding background */}
-              <div
-                className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-primary rounded-full transition-all duration-300 ease-out shadow-sm ${
-                  diet === "veg" ? "left-1" : "left-[calc(50%+3px)]"
-                }`}
-              />
-
-              <button
-                onClick={() => setDiet("veg")}
-                className={`relative z-10 w-28 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${
-                  diet === "veg"
-                    ? "text-white"
-                    : "text-text-medium hover:text-text-dark"
-                }`}
-              >
-                Vegetarian
-              </button>
-              <button
-                onClick={() => setDiet("non-veg")}
-                className={`relative z-10 w-28 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${
-                  diet === "non-veg"
-                    ? "text-white"
-                    : "text-text-medium hover:text-text-dark"
-                }`}
-              >
-                Non-Veg
-              </button>
-            </div>
-
-            {/* Language Selector */}
-            <div className="relative inline-flex items-center bg-background-muted/40 border border-border-gray/20 rounded-2xl px-4 py-2.5">
-              <Languages size={18} className="text-primary mr-2" strokeWidth={2} />
+          <div className="flex items-center gap-4">
+            {/* Language — compact inline */}
+            <div className="relative hidden sm:flex items-center gap-1.5">
+              <Languages size={15} className="text-text-medium shrink-0" strokeWidth={2} />
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="appearance-none bg-transparent text-sm font-medium text-text-dark pr-8 focus:outline-none cursor-pointer"
+                className="appearance-none bg-transparent text-sm font-medium text-text-medium hover:text-text-dark pr-5 focus:outline-none cursor-pointer"
               >
                 {LANGUAGES.map((lang) => (
                   <option key={lang.code} value={lang.code}>
@@ -175,114 +129,141 @@ export default function AppHome() {
                   </option>
                 ))}
               </select>
-              <div className="absolute right-4 pointer-events-none">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-text-medium">
-                  <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <div className="absolute right-0 pointer-events-none">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="text-text-medium">
+                  <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Diet toggle — pill */}
+            <div className="relative inline-flex items-center bg-background-muted border border-border-gray/25 rounded-full p-0.5">
+              <div
+                className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] bg-primary rounded-full transition-all duration-300 ease-out ${
+                  diet === "veg" ? "left-0.5" : "left-[calc(50%+2px)]"
+                }`}
+              />
+              <button
+                onClick={() => setDiet("veg")}
+                className={`relative z-10 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
+                  diet === "veg" ? "text-white" : "text-text-medium"
+                }`}
+              >
+                Veg
+              </button>
+              <button
+                onClick={() => setDiet("non-veg")}
+                className={`relative z-10 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
+                  diet === "non-veg" ? "text-white" : "text-text-medium"
+                }`}
+              >
+                Non-Veg
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="relative flex items-center justify-center min-h-[62vh] overflow-hidden">
+        {/* Kitchen background */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?auto=format&fit=crop&w=1920&q=60"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover scale-105 blur-sm opacity-35 select-none pointer-events-none"
+        />
+        <div className="absolute inset-0 bg-background-light/55" />
+
+        {/* Hero content */}
+        <div className="relative z-10 w-full max-w-xl mx-auto px-6 py-16 flex flex-col items-center gap-6 text-center">
+          <div className="space-y-2">
+            <h1 className="text-4xl sm:text-5xl font-bold text-primary leading-tight tracking-tight">
+              What are you craving?
+            </h1>
+            <p className="text-text-medium text-base">
+              Discover recipes tailored to your taste and time.
+            </p>
+          </div>
+
+          {/* Search bar */}
+          <div className="w-full flex items-center gap-0 bg-white rounded-2xl border border-border-gray/25 shadow-sm overflow-hidden pl-4">
+            <Search size={18} className="text-text-medium shrink-0" strokeWidth={2} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="e.g. Quick vegetarian pasta..."
+              className="flex-1 px-3 py-4 text-sm text-text-dark placeholder:text-text-medium/55 focus:outline-none bg-transparent"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleUnifiedSearch();
+              }}
+            />
+            <button
+              onClick={() => handleUnifiedSearch()}
+              disabled={!searchQuery.trim() && selectedIngredients.length === 0}
+              className="m-1.5 p-3 rounded-xl bg-primary text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary-dark active:scale-95 transition-all duration-150 shrink-0"
+            >
+              <ArrowRight size={18} strokeWidth={2.5} />
+            </button>
+          </div>
+
+          {/* Sub-actions */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowIngredientsSheet(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/80 border border-border-gray/30 text-sm font-medium text-text-dark shadow-sm hover:border-primary/40 hover:text-primary active:scale-95 transition-all duration-150"
+            >
+              <Plus size={14} strokeWidth={2.5} />
+              {selectedIngredients.length > 0
+                ? `+ ${selectedIngredients.length} ingredients`
+                : "By ingredients"}
+            </button>
+
+            {/* Mobile language — shown only on small screens */}
+            <div className="relative flex sm:hidden items-center gap-1 bg-white/80 border border-border-gray/30 rounded-full px-3 py-2 shadow-sm">
+              <Languages size={14} className="text-text-medium shrink-0" strokeWidth={2} />
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="appearance-none bg-transparent text-xs font-medium text-text-medium pr-4 focus:outline-none cursor-pointer max-w-[80px]"
+              >
+                {LANGUAGES.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 pointer-events-none">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="text-text-medium">
+                  <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* Search row */}
-          <div className="flex items-center gap-2">
-            <div className="relative group flex-1">
-              <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-text-medium group-focus-within:text-primary transition-colors">
-                <Search size={20} strokeWidth={2} />
-              </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search recipes — e.g. paneer curry"
-                className="w-full py-4 pl-14 pr-5 rounded-2xl bg-background-muted/40 border border-border-gray/20 text-text-dark placeholder:text-text-medium/60 focus:outline-none focus:border-primary/50 focus:shadow-[0_0_0_3px_rgba(14,71,1,0.1)] transition-all duration-200"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleUnifiedSearch();
-                  }
-                }}
-              />
-            </div>
+      {/* Category tiles */}
+      <section className="bg-white border-t border-border-gray/15 px-6 py-8">
+        <div className="max-w-md mx-auto grid grid-cols-4 gap-3">
+          {CATEGORIES.map(({ id, label, Icon, query, diet: catDiet }) => (
             <button
-              onClick={() => handleUnifiedSearch()}
-              disabled={!searchQuery.trim() && selectedIngredients.length === 0}
-              className="px-5 py-4 rounded-2xl bg-primary/80 text-white text-sm font-semibold disabled:opacity-45 disabled:cursor-not-allowed hover:bg-primary transition-colors duration-200"
+              key={id}
+              onClick={() => handleUnifiedSearch(query, catDiet)}
+              className="flex flex-col items-center gap-2.5 p-4 rounded-2xl bg-background-muted/60 border border-border-gray/20 hover:border-primary/30 hover:bg-primary/5 active:scale-95 transition-all duration-150 group"
             >
-              Search
+              <div className="w-10 h-10 rounded-xl bg-white border border-border-gray/25 flex items-center justify-center shadow-sm group-hover:border-primary/20 transition-colors">
+                <Icon size={20} className="text-text-dark group-hover:text-primary transition-colors" strokeWidth={1.75} />
+              </div>
+              <span className="text-[10px] font-semibold text-text-medium uppercase tracking-wider leading-tight text-center">
+                {label}
+              </span>
             </button>
-          </div>
+          ))}
         </div>
-
-        {/* Ingredients trigger — below the card, centered */}
-        <div className="flex justify-center">
-          <button
-            onClick={() => setShowIngredientsSheet(true)}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-border-gray/30 text-sm font-semibold text-text-dark shadow-sm hover:border-primary/40 hover:text-primary hover:shadow-md active:scale-95 transition-all duration-200"
-          >
-            <Plus size={16} strokeWidth={2.5} />
-            <span>
-              {selectedIngredients.length > 0
-                ? `+ ${selectedIngredients.length}`
-                : "Search by ingredients"}
-            </span>
-          </button>
-        </div>
-
-        {/* Popular searches */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 px-1">
-            <Sparkles size={16} className="text-primary" strokeWidth={2} />
-            <span className="text-sm font-medium text-text-medium">Popular searches</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {quickSearches.map((search) => (
-              <button
-                key={search}
-                onClick={() => handleUnifiedSearch(search)}
-                className="px-5 py-2.5 rounded-full bg-white border border-border-gray/30 text-sm font-medium text-text-dark hover:border-primary hover:text-primary hover:shadow-sm active:scale-95 transition-all duration-200"
-              >
-                {search}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Feature Cards */}
-        <div className="space-y-4 pb-8">
-          <h2 className="text-sm font-semibold text-text-medium uppercase tracking-wide px-1">
-            Why ChefQuest?
-          </h2>
-          <div className="grid gap-3">
-            <div className="bg-white border border-border-gray/30 rounded-2xl p-5 hover:border-primary/30 hover:shadow-sm transition-all duration-200">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <ChefHat size={20} className="text-primary" strokeWidth={2} />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="font-semibold text-text-dark">AI-Powered Recipes</h3>
-                  <p className="text-sm text-text-medium leading-relaxed">
-                    Get personalized recipes based on your ingredients and preferences
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white border border-border-gray/30 rounded-2xl p-5 hover:border-primary/30 hover:shadow-sm transition-all duration-200">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Zap size={20} className="text-primary" strokeWidth={2} />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="font-semibold text-text-dark">Quick & Easy</h3>
-                  <p className="text-sm text-text-medium leading-relaxed">
-                    Find recipes that match your cooking time and skill level
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </main>
+      </section>
 
       <BottomNav />
 
@@ -290,23 +271,21 @@ export default function AppHome() {
       {showIngredientsSheet && (
         <div
           className="fixed inset-0 z-[120] bg-black/35 backdrop-blur-[1px]"
-          onClick={() => {
-            setShowIngredientsSheet(false);
-          }}
+          onClick={() => setShowIngredientsSheet(false)}
         >
           <div
-            className="absolute inset-x-0 bottom-24 max-w-md mx-auto bg-white rounded-3xl border border-border-gray/20 shadow-2xl p-6 max-h-[72vh] overflow-y-auto"
+            className="absolute inset-x-0 bottom-20 max-w-md mx-auto bg-white rounded-3xl border border-border-gray/20 shadow-2xl p-6 max-h-[72vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-primary">Add Ingredients</h2>
-                <p className="text-xs text-text-medium mt-0.5">Use ingredients only, or combine with home search.</p>
+                <p className="text-xs text-text-medium mt-0.5">
+                  Use ingredients only, or combine with the search above.
+                </p>
               </div>
               <button
-                onClick={() => {
-                  setShowIngredientsSheet(false);
-                }}
+                onClick={() => setShowIngredientsSheet(false)}
                 className="w-9 h-9 rounded-full border border-border-gray/30 text-text-medium hover:text-text-dark hover:border-border-gray/60 transition-colors flex items-center justify-center"
               >
                 <X size={18} strokeWidth={2.5} />
@@ -314,11 +293,10 @@ export default function AppHome() {
             </div>
 
             <div className="mt-4 rounded-2xl border border-border-gray/30 bg-background-muted/35 p-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-text-dark">
-                  Selected ingredients: <span className="text-primary">{selectedIngredients.length}</span>
-                </p>
-              </div>
+              <p className="text-sm font-medium text-text-dark">
+                Selected ingredients:{" "}
+                <span className="text-primary">{selectedIngredients.length}</span>
+              </p>
               <p className="text-xs text-text-medium mt-1">
                 {searchQuery.trim()
                   ? `Search will use "${searchQuery.trim()}" + selected ingredients.`
@@ -335,9 +313,7 @@ export default function AppHome() {
                   placeholder="Add ingredient (e.g., tomato)"
                   className="flex-1 px-4 py-3 rounded-xl border border-border-gray/30 text-sm text-text-dark placeholder:text-text-medium/60 focus:outline-none focus:border-primary/50"
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      addIngredient(ingredientInput);
-                    }
+                    if (e.key === "Enter") addIngredient(ingredientInput);
                   }}
                 />
                 <button
@@ -376,7 +352,9 @@ export default function AppHome() {
               )}
 
               <div className="space-y-2">
-                <p className="text-xs font-medium text-text-medium uppercase tracking-wide">Popular ingredients</p>
+                <p className="text-xs font-medium text-text-medium uppercase tracking-wide">
+                  Popular ingredients
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {suggestedIngredients.map((item) => (
                     <button
@@ -389,6 +367,14 @@ export default function AppHome() {
                   ))}
                 </div>
               </div>
+
+              <button
+                onClick={() => handleUnifiedSearch()}
+                disabled={selectedIngredients.length === 0 && !searchQuery.trim()}
+                className="w-full py-3.5 rounded-2xl bg-primary text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary-dark active:scale-[0.98] transition-all"
+              >
+                Search recipes
+              </button>
             </div>
           </div>
         </div>
