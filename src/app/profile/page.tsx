@@ -109,80 +109,86 @@ export default function ProfilePage() {
                         <Loader2 size={36} className="animate-spin text-primary" strokeWidth={2} />
                     </div>
                 ) : (
-                    <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-4 pb-10">
+                    <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 pb-10">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
 
-                        {/* Profile card */}
-                        <div className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-6 flex flex-col items-center gap-4 text-center">
-                            {user?.picture ? (
-                                <img src={user.picture} alt={user.name} className="w-20 h-20 rounded-full border-2 border-primary/20 object-cover" />
-                            ) : (
-                                <div className="w-20 h-20 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center">
-                                    <User size={36} className="text-primary" strokeWidth={2} />
-                                </div>
-                            )}
-                            <div className="space-y-1">
-                                <h1 className="text-xl font-bold text-text-dark">{user?.name || "Chef Profile"}</h1>
-                                <p className="text-sm text-text-medium">{user?.email || "Your culinary journey"}</p>
-                                {user?.provider && (
-                                    <span className="inline-block mt-1 px-3 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
-                                        {user.provider === "google" ? "Google Account" : "Demo Account"}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Stats */}
-                        <div className="grid grid-cols-3 gap-3">
-                            {statsData.map((stat) => (
-                                <button
-                                    key={stat.label}
-                                    onClick={stat.onClick}
-                                    className={`bg-white rounded-2xl border border-border-gray/20 shadow-sm p-4 flex flex-col items-center gap-2 transition-colors ${stat.onClick ? "hover:border-primary/30 hover:bg-primary/5 cursor-pointer" : "cursor-default"}`}
-                                >
-                                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                                        <stat.icon size={16} className="text-primary" strokeWidth={2} />
+                            {/* Left column: Profile card */}
+                            <div className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-8 flex flex-col items-center gap-4 text-center">
+                                {user?.picture ? (
+                                    <img src={user.picture} alt={user.name} className="w-24 h-24 rounded-full border-2 border-primary/20 object-cover" />
+                                ) : (
+                                    <div className="w-24 h-24 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center">
+                                        <User size={40} className="text-primary" strokeWidth={2} />
                                     </div>
-                                    <div className="text-2xl font-bold text-primary tabular-nums">{stat.value}</div>
-                                    <div className="text-[11px] text-text-medium leading-tight text-center">{stat.label}</div>
-                                </button>
-                            ))}
-                        </div>
+                                )}
+                                <div className="space-y-1.5">
+                                    <h1 className="text-xl font-bold text-text-dark">{user?.name || "Chef Profile"}</h1>
+                                    <p className="text-sm text-text-medium">{user?.email || "Your culinary journey"}</p>
+                                    {user?.provider && (
+                                        <span className="inline-block mt-1 px-3 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
+                                            {user.provider === "google" ? "Google Account" : "Demo Account"}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
 
-                        {/* Settings */}
-                        <div className="space-y-2">
-                            <p className="text-[11px] font-semibold text-text-medium uppercase tracking-widest px-1">Settings</p>
-                            <div className="bg-white rounded-2xl border border-border-gray/20 shadow-sm overflow-hidden divide-y divide-border-gray/15">
-                                {settingsItems.map((item) => (
-                                    <button
-                                        key={item.label}
-                                        onClick={item.onClick}
-                                        disabled={!item.onClick}
-                                        className="w-full px-5 py-4 flex items-center gap-4 hover:bg-background-muted/60 disabled:hover:bg-transparent transition-colors"
-                                    >
-                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${item.iconBg}`}>
-                                            <item.icon size={17} className={item.iconColor} strokeWidth={2} />
-                                        </div>
-                                        <div className="flex-1 text-left">
-                                            <div className={`text-sm font-semibold ${(item as { labelColor?: string }).labelColor || "text-text-dark"}`}>{item.label}</div>
-                                            <div className="text-xs text-text-medium mt-0.5">{item.description}</div>
-                                        </div>
-                                    </button>
-                                ))}
+                            {/* Right column: Stats + Settings + About */}
+                            <div className="space-y-4">
+
+                                {/* Stats */}
+                                <div className="grid grid-cols-3 gap-3">
+                                    {statsData.map((stat) => (
+                                        <button
+                                            key={stat.label}
+                                            onClick={stat.onClick}
+                                            className={`bg-white rounded-2xl border border-border-gray/20 shadow-sm p-4 flex flex-col items-center gap-2 transition-colors ${stat.onClick ? "hover:border-primary/30 hover:bg-primary/5 cursor-pointer" : "cursor-default"}`}
+                                        >
+                                            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                                                <stat.icon size={16} className="text-primary" strokeWidth={2} />
+                                            </div>
+                                            <div className="text-2xl font-bold text-primary tabular-nums">{stat.value}</div>
+                                            <div className="text-[11px] text-text-medium leading-tight text-center">{stat.label}</div>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Settings */}
+                                <div className="space-y-2">
+                                    <p className="text-[11px] font-semibold text-text-medium uppercase tracking-widest px-1">Settings</p>
+                                    <div className="bg-white rounded-2xl border border-border-gray/20 shadow-sm overflow-hidden divide-y divide-border-gray/15">
+                                        {settingsItems.map((item) => (
+                                            <button
+                                                key={item.label}
+                                                onClick={item.onClick}
+                                                disabled={!item.onClick}
+                                                className="w-full px-5 py-4 flex items-center gap-4 hover:bg-background-muted/60 disabled:hover:bg-transparent transition-colors"
+                                            >
+                                                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${item.iconBg}`}>
+                                                    <item.icon size={17} className={item.iconColor} strokeWidth={2} />
+                                                </div>
+                                                <div className="flex-1 text-left">
+                                                    <div className={`text-sm font-semibold ${(item as { labelColor?: string }).labelColor || "text-text-dark"}`}>{item.label}</div>
+                                                    <div className="text-xs text-text-medium mt-0.5">{item.description}</div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* About */}
+                                <div className="space-y-2">
+                                    <p className="text-[11px] font-semibold text-text-medium uppercase tracking-widest px-1">About</p>
+                                    <div className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-5 text-center space-y-2">
+                                        <p className="text-lg font-bold text-primary">ChefQuest</p>
+                                        <p className="text-sm text-text-medium leading-relaxed">
+                                            Your AI-powered culinary companion. Discover recipes, master techniques, and embark on delicious cooking quests.
+                                        </p>
+                                        <p className="text-xs text-text-medium pt-1">Version 1.0.0</p>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
-
-                        {/* About */}
-                        <div className="space-y-2">
-                            <p className="text-[11px] font-semibold text-text-medium uppercase tracking-widest px-1">About</p>
-                            <div className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-5 text-center space-y-2">
-                                <p className="text-lg font-bold text-primary">ChefQuest</p>
-                                <p className="text-sm text-text-medium leading-relaxed">
-                                    Your AI-powered culinary companion. Discover recipes, master techniques, and embark on delicious cooking quests.
-                                </p>
-                                <p className="text-xs text-text-medium pt-1">Version 1.0.0</p>
-                            </div>
-                        </div>
-
                     </main>
                 )}
 
