@@ -110,7 +110,7 @@ export default function AppHome() {
 
       {/* Top Nav */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-border-gray/15">
-        <div className="max-w-screen-lg mx-auto px-5 h-14 flex items-center gap-3">
+        <div className="w-full px-5 h-14 flex items-center gap-3">
 
           {/* Logo */}
           <span className="text-lg font-bold text-primary tracking-tight shrink-0">ChefQuest</span>
