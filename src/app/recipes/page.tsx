@@ -6,29 +6,21 @@ import { Recipe } from "@/lib/gemini";
 import { Clock, Flame, Loader2, ChefHat, AlertCircle, User } from "lucide-react";
 import { recipeCache } from "@/lib/cache";
 
-// Subtle pastel tones that rotate across cards
-const CARD_ACCENTS = [
-  "bg-emerald-50",
-  "bg-amber-50",
-  "bg-sky-50",
-  "bg-rose-50",
-  "bg-violet-50",
-  "bg-lime-50",
-];
-
 function SkeletonCard() {
     return (
-        <div className="bg-white rounded-2xl border border-border-gray/20 overflow-hidden animate-pulse">
-            <div className="h-32 bg-background-muted" />
-            <div className="p-3 space-y-2.5">
-                <div className="h-3 bg-background-muted rounded-full w-4/5" />
-                <div className="h-3 bg-background-muted rounded-full w-3/5" />
+        <div className="bg-white rounded-2xl border border-border-gray/20 p-4 animate-pulse space-y-3">
+            <div className="space-y-2">
+                <div className="h-3.5 bg-background-muted rounded-full w-5/6" />
+                <div className="h-3.5 bg-background-muted rounded-full w-3/4" />
+            </div>
+            <div className="space-y-1.5">
                 <div className="h-2.5 bg-background-muted rounded-full w-full" />
-                <div className="h-2.5 bg-background-muted rounded-full w-4/5" />
-                <div className="flex gap-3 pt-1">
-                    <div className="h-2.5 bg-background-muted rounded-full w-12" />
-                    <div className="h-2.5 bg-background-muted rounded-full w-14" />
-                </div>
+                <div className="h-2.5 bg-background-muted rounded-full w-5/6" />
+                <div className="h-2.5 bg-background-muted rounded-full w-4/6" />
+            </div>
+            <div className="flex gap-3 pt-1">
+                <div className="h-2.5 bg-background-muted rounded-full w-14" />
+                <div className="h-2.5 bg-background-muted rounded-full w-16" />
             </div>
         </div>
     );
@@ -75,7 +67,12 @@ function RecipesPageContent() {
                     return;
                 }
 
-                const apiParams = new URLSearchParams({ q: query, diet: diet || "veg", lang: language });
+                const apiParams = new URLSearchParams({
+                    q: query,
+                    diet: diet || "veg",
+                    lang: language,
+                    count: "12",
+                });
                 if (mode) apiParams.set("mode", mode);
                 if (ingredients) apiParams.set("ingredients", ingredients);
 
@@ -103,7 +100,13 @@ function RecipesPageContent() {
         setLoadingMore(true);
 
         try {
-            const apiParams = new URLSearchParams({ q: query, diet: diet || "veg", lang: language, usePopular: "false" });
+            const apiParams = new URLSearchParams({
+                q: query,
+                diet: diet || "veg",
+                lang: language,
+                usePopular: "false",
+                count: "12",
+            });
             if (mode) apiParams.set("mode", mode);
             if (ingredients) apiParams.set("ingredients", ingredients);
 
@@ -119,38 +122,40 @@ function RecipesPageContent() {
                 const unique = moreRecipes.filter((r) => !existingTitles.has(r.title.toLowerCase()));
                 if (unique.length === 0) { setHasMore(false); return prev; }
                 const updated = [...prev, ...unique];
-                const newPage = currentPage + 1;
-                setCurrentPage(newPage);
-                recipeCache.setRecipes(cacheQueryKey, diet || undefined, updated, newPage, language);
+                setCurrentPage((p) => {
+                    recipeCache.setRecipes(cacheQueryKey, diet || undefined, updated, p + 1, language);
+                    return p + 1;
+                });
                 return updated;
             });
         } catch {
-            // silently fail — user can scroll up/down to retry
+            // silent — scroll will retry
         } finally {
             setLoadingMore(false);
             loadingMoreRef.current = false;
         }
-    }, [query, diet, language, mode, ingredients, cacheQueryKey, currentPage, hasMore]);
+    }, [query, diet, language, mode, ingredients, cacheQueryKey, hasMore]);
 
-    // Infinite scroll sentinel
+    // Infinite scroll
     useEffect(() => {
         const sentinel = sentinelRef.current;
         if (!sentinel) return;
-
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting && hasMore && !loadingMoreRef.current) {
                     handleLoadMore();
                 }
             },
-            { rootMargin: "200px" }
+            { rootMargin: "300px" }
         );
-
         observer.observe(sentinel);
         return () => observer.disconnect();
     }, [hasMore, handleLoadMore]);
 
     const dietLabel = diet === "veg" ? "Vegetarian" : diet === "non-veg" ? "Non-Vegetarian" : "All";
+
+    // Skeleton count: fill the row based on approximate col count
+    const SKELETON_COUNT = 12;
 
     return (
         <div className="min-h-screen bg-background-muted flex flex-col">
@@ -186,11 +191,10 @@ function RecipesPageContent() {
             </header>
 
             {/* Content */}
-            <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-5">
+            <main className="flex-1 w-full px-4 sm:px-6 py-5">
                 {loading ? (
-                    /* Initial skeleton grid */
-                    <div className="grid grid-cols-2 gap-3">
-                        {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                        {Array.from({ length: SKELETON_COUNT }).map((_, i) => <SkeletonCard key={i} />)}
                     </div>
                 ) : error ? (
                     <div className="flex flex-col items-center justify-center min-h-[55vh] gap-4">
@@ -220,25 +224,18 @@ function RecipesPageContent() {
                             {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"} found
                         </p>
 
-                        {/* 2-column grid */}
-                        <div className="grid grid-cols-2 gap-3">
-                            {recipes.map((recipe, idx) => (
-                                <RecipeCard
-                                    key={recipe.id}
-                                    recipe={recipe}
-                                    language={language}
-                                    accentClass={CARD_ACCENTS[idx % CARD_ACCENTS.length]}
-                                />
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                            {recipes.map((recipe) => (
+                                <RecipeCard key={recipe.id} recipe={recipe} language={language} />
                             ))}
-
-                            {/* Skeleton cards appended while loading more */}
-                            {loadingMore && Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={`sk-${i}`} />)}
+                            {loadingMore && Array.from({ length: SKELETON_COUNT }).map((_, i) => (
+                                <SkeletonCard key={`sk-${i}`} />
+                            ))}
                         </div>
 
-                        {/* Sentinel for IntersectionObserver */}
                         {hasMore && <div ref={sentinelRef} className="h-4 mt-2" />}
 
-                        {!hasMore && recipes.length > 0 && (
+                        {!hasMore && (
                             <p className="text-center text-xs text-text-medium py-6">
                                 You&apos;ve seen all results
                             </p>
@@ -250,36 +247,28 @@ function RecipesPageContent() {
     );
 }
 
-function RecipeCard({ recipe, language, accentClass }: { recipe: Recipe; language?: string; accentClass: string }) {
+function RecipeCard({ recipe, language }: { recipe: Recipe; language?: string }) {
     const router = useRouter();
 
     return (
         <div
             onClick={() => router.push(`/recipes/${recipe.id}${language ? `?lang=${language}` : ""}`)}
-            className="bg-white rounded-2xl border border-border-gray/20 shadow-sm overflow-hidden cursor-pointer hover:border-primary/25 hover:shadow-md active:scale-[0.98] transition-all duration-150 flex flex-col"
+            className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-4 cursor-pointer hover:border-primary/30 hover:shadow-md active:scale-[0.98] transition-all duration-150 flex flex-col gap-2"
         >
-            {/* Visual area */}
-            <div className={`${accentClass} h-28 flex items-center justify-center shrink-0`}>
-                <ChefHat size={32} className="text-text-medium/30" strokeWidth={1.5} />
-            </div>
-
-            {/* Content */}
-            <div className="p-3 flex flex-col gap-1.5 flex-1">
-                <h3 className="text-xs font-semibold text-text-dark leading-snug line-clamp-2">
-                    {recipe.title}
-                </h3>
-                <p className="text-[11px] text-text-medium leading-relaxed line-clamp-2 flex-1">
-                    {recipe.description}
-                </p>
-                <div className="flex items-center gap-3 pt-1">
-                    <div className="flex items-center gap-1 text-[11px] text-text-medium">
-                        <Clock size={11} className="text-primary shrink-0" strokeWidth={2} />
-                        <span>{recipe.time}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-[11px] text-text-medium">
-                        <Flame size={11} className="text-secondary-orange shrink-0" strokeWidth={2} />
-                        <span>{recipe.calories}</span>
-                    </div>
+            <h3 className="text-xs font-bold text-text-dark leading-snug line-clamp-2">
+                {recipe.title}
+            </h3>
+            <p className="text-[11px] text-text-medium leading-relaxed line-clamp-3 flex-1">
+                {recipe.description}
+            </p>
+            <div className="flex items-center gap-3 pt-1 border-t border-border-gray/15 mt-auto">
+                <div className="flex items-center gap-1 text-[11px] text-text-medium">
+                    <Clock size={11} className="text-primary shrink-0" strokeWidth={2} />
+                    <span>{recipe.time}</span>
+                </div>
+                <div className="flex items-center gap-1 text-[11px] text-text-medium">
+                    <Flame size={11} className="text-secondary-orange shrink-0" strokeWidth={2} />
+                    <span>{recipe.calories}</span>
                 </div>
             </div>
         </div>
@@ -291,9 +280,9 @@ export default function RecipesPage() {
         <Suspense fallback={
             <div className="min-h-screen bg-background-muted flex flex-col">
                 <div className="w-full h-14 bg-white border-b border-border-gray/15" />
-                <div className="w-full max-w-2xl mx-auto px-4 py-5">
-                    <div className="grid grid-cols-2 gap-3">
-                        {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+                <div className="w-full px-4 sm:px-6 py-5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                        {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
                     </div>
                 </div>
             </div>

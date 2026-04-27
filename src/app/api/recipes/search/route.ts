@@ -21,6 +21,7 @@ export async function GET(request: Request) {
   const diet = searchParams.get('diet')
   const language = searchParams.get('lang') || 'en'
   const usePopular = searchParams.get('usePopular') !== 'false'
+  const count = Math.min(parseInt(searchParams.get('count') || '12', 10), 20)
   const ingredientsParam = searchParams.get('ingredients')
   const ingredients = (ingredientsParam || '')
     .split(',')
@@ -114,7 +115,7 @@ export async function GET(request: Request) {
     const generatedRecipesRaw = await aiRouter.searchRecipes(
       query,
       diet || undefined,
-      6,
+      count,
       language,
       ingredients
     )
