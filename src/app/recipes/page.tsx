@@ -193,7 +193,7 @@ function RecipesPageContent() {
             {/* Content */}
             <main className="flex-1 w-full px-4 sm:px-6 py-5">
                 {loading ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {Array.from({ length: SKELETON_COUNT }).map((_, i) => <SkeletonCard key={i} />)}
                     </div>
                 ) : error ? (
@@ -224,7 +224,7 @@ function RecipesPageContent() {
                             {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"} found
                         </p>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                             {recipes.map((recipe) => (
                                 <RecipeCard key={recipe.id} recipe={recipe} language={language} />
                             ))}
@@ -233,7 +233,25 @@ function RecipesPageContent() {
                             ))}
                         </div>
 
-                        {hasMore && <div ref={sentinelRef} className="h-4 mt-2" />}
+                        {/* Sentinel for infinite scroll pre-load */}
+                        {hasMore && <div ref={sentinelRef} className="h-1 mt-1" />}
+
+                        {/* Load More button */}
+                        {hasMore && (
+                            <div className="flex justify-center pt-6 pb-4">
+                                <button
+                                    onClick={handleLoadMore}
+                                    disabled={loadingMore}
+                                    className="inline-flex items-center gap-2 px-8 py-3 bg-white border border-border-gray/25 rounded-full text-sm font-semibold text-primary shadow-sm hover:border-primary/40 hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150"
+                                >
+                                    {loadingMore ? (
+                                        <><Loader2 size={15} className="animate-spin" strokeWidth={2} /><span>Loading...</span></>
+                                    ) : (
+                                        <span>Load more recipes</span>
+                                    )}
+                                </button>
+                            </div>
+                        )}
 
                         {!hasMore && (
                             <p className="text-center text-xs text-text-medium py-6">
@@ -281,7 +299,7 @@ export default function RecipesPage() {
             <div className="min-h-screen bg-background-muted flex flex-col">
                 <div className="w-full h-14 bg-white border-b border-border-gray/15" />
                 <div className="w-full px-4 sm:px-6 py-5">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
                     </div>
                 </div>
