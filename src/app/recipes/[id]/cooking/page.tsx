@@ -864,7 +864,8 @@ export default function CookingQuestPage() {
             )}
 
             {/* Steps Checklist */}
-            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5 space-y-3">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {recipeSteps.map((step, index) => {
                     const status = stepStatuses.find((s) => s.stepNumber === step.step_number);
                     const isCompleted = status?.completed || false;
@@ -1032,6 +1033,7 @@ export default function CookingQuestPage() {
                         </div>
                     );
                 })}
+            </div>
             </div>
 
             {/* Completion Message */}
