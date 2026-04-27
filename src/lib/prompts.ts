@@ -2,7 +2,13 @@
 // RECIPE SEARCH PROMPTS
 // ========================================
 
-export const RECIPE_SEARCH_PROMPT = (query: string, diet?: string, count: number = 5, language: string = "en") => `
+export const RECIPE_SEARCH_PROMPT = (
+  query: string,
+  diet?: string,
+  count: number = 5,
+  language: string = "en",
+  ingredients: string[] = []
+) => `
 You are a professional chef and recipe curator with expertise in diverse cuisines worldwide, including traditional, regional, and cultural recipes.
 
 **TASK:** Suggest ${count} diverse and creative recipes based on the query: "${query}"
@@ -10,6 +16,14 @@ You are a professional chef and recipe curator with expertise in diverse cuisine
 ${diet ? `**DIETARY REQUIREMENT:** All recipes MUST strictly adhere to a ${diet === "veg" ? "vegetarian" : diet === "non-veg" ? "non-vegetarian" : diet} diet. Exclude any ingredients that don't comply with these dietary restrictions.` : ""}
 
 ${language !== "en" ? `**LANGUAGE:** Provide ALL text content (titles, descriptions, etc.) in the language with code "${language}". Use native script and authentic terminology for that language.` : ""}
+
+${ingredients.length > 0 ? `**AVAILABLE INGREDIENTS (USER-PROVIDED):** ${ingredients.join(", ")}
+
+When generating recipes:
+- Prioritize recipes that use these available ingredients.
+- Do NOT require all listed ingredients in every recipe.
+- It is acceptable to include a small number of common pantry additions (salt, oil, water, basic spices).
+- Prefer practical recipes where most core ingredients come from this list.` : ""}
 
 **IMPORTANT GUIDELINES:**
 - For BEVERAGE queries (tea, coffee, drinks, etc.), include authentic recipes for making these beverages from scratch

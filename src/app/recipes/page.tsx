@@ -13,6 +13,9 @@ function RecipesPageContent() {
     const query = searchParams.get("q");
     const diet = searchParams.get("diet");
     const language = searchParams.get("lang") || "en";
+    const mode = searchParams.get("mode");
+    const ingredients = searchParams.get("ingredients");
+    const cacheQueryKey = `${query || ""}|mode=${mode || "query_only"}|ingredients=${ingredients || ""}`;
 
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [loading, setLoading] = useState(true);
@@ -29,7 +32,7 @@ function RecipesPageContent() {
         }
 
         // Prevent double fetching in React Strict Mode
-        const cacheKey = `${query}-${diet}-${language}`;
+        const cacheKey = `${cacheQueryKey}-${diet}-${language}`;
         if (fetchedQuery.current === cacheKey) {
             return;
         }
@@ -41,16 +44,24 @@ function RecipesPageContent() {
                 setError("");
                 
                 // Check cache first
-                const cached = recipeCache.getRecipes(query, diet || undefined, language);
+                const cached = recipeCache.getRecipes(cacheQueryKey, diet || undefined, language);
                 if (cached && cached.length > 0) {
                     setRecipes(cached);
-                    setCurrentPage(recipeCache.getRecipesPage(query, diet || undefined, language));
+                    setCurrentPage(recipeCache.getRecipesPage(cacheQueryKey, diet || undefined, language));
                     setLoading(false);
                     return;
                 }
 
                 // Fetch from API if not cached
-                const response = await fetch(`/api/recipes/search?q=${encodeURIComponent(query)}&diet=${diet || 'veg'}&lang=${language}`);
+                const apiParams = new URLSearchParams({
+                    q: query,
+                    diet: diet || "veg",
+                    lang: language,
+                });
+                if (mode) apiParams.set("mode", mode);
+                if (ingredients) apiParams.set("ingredients", ingredients);
+
+                const response = await fetch(`/api/recipes/search?${apiParams.toString()}`);
                 const data = await response.json();
                 
                 if (data.error) {
@@ -62,7 +73,7 @@ function RecipesPageContent() {
                 setCurrentPage(1);
                 
                 // Cache the results
-                recipeCache.setRecipes(query, diet || undefined, results, 1, language);
+                recipeCache.setRecipes(cacheQueryKey, diet || undefined, results, 1, language);
             } catch (err) {
                 setError("Failed to fetch recipes. Please try again.");
             } finally {
@@ -71,7 +82,7 @@ function RecipesPageContent() {
         };
 
         fetchRecipes();
-    }, [query, diet, language]);
+    }, [query, diet, language, mode, ingredients, cacheQueryKey]);
 
     const handleLoadMore = async () => {
         if (!query || loadingMore) return;
@@ -81,7 +92,16 @@ function RecipesPageContent() {
             setError("");
 
             // Request more recipes
-            const response = await fetch(`/api/recipes/search?q=${encodeURIComponent(query)}&diet=${diet || 'veg'}&lang=${language}&usePopular=false`);
+            const apiParams = new URLSearchParams({
+                q: query,
+                diet: diet || "veg",
+                lang: language,
+                usePopular: "false",
+            });
+            if (mode) apiParams.set("mode", mode);
+            if (ingredients) apiParams.set("ingredients", ingredients);
+
+            const response = await fetch(`/api/recipes/search?${apiParams.toString()}`);
             const data = await response.json();
             
             if (data.error || !data.recipes) {
@@ -112,7 +132,7 @@ function RecipesPageContent() {
             setCurrentPage(newPage);
 
             // Update cache with new recipes
-            recipeCache.setRecipes(query, diet || undefined, updatedRecipes, newPage, language);
+            recipeCache.setRecipes(cacheQueryKey, diet || undefined, updatedRecipes, newPage, language);
         } catch (err) {
             setError("Failed to load more recipes. Please try again.");
         } finally {

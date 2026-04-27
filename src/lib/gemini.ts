@@ -103,9 +103,15 @@ export class GeminiAgent {
      * @param language Language code for the response (default: "en")
      * @returns Array of recipe objects
      */
-    async searchRecipes(query: string, diet?: string, count: number = 5, language: string = "en"): Promise<Recipe[]> {
+    async searchRecipes(
+        query: string,
+        diet?: string,
+        count: number = 5,
+        language: string = "en",
+        ingredients: string[] = []
+    ): Promise<Recipe[]> {
         try {
-            const prompt = RECIPE_SEARCH_PROMPT(query, diet, count, language);
+            const prompt = RECIPE_SEARCH_PROMPT(query, diet, count, language, ingredients);
 
             const result = await this.model.generateContent(prompt);
             const response = await result.response;

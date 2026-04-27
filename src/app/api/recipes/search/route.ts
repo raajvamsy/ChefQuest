@@ -21,6 +21,12 @@ export async function GET(request: Request) {
   const diet = searchParams.get('diet')
   const language = searchParams.get('lang') || 'en'
   const usePopular = searchParams.get('usePopular') !== 'false'
+  const ingredientsParam = searchParams.get('ingredients')
+  const ingredients = (ingredientsParam || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+  const hasIngredientFilter = ingredients.length > 0
   
   if (!query) {
     return NextResponse.json({ error: 'Query required' }, { status: 400 })
@@ -29,10 +35,17 @@ export async function GET(request: Request) {
   try {
     const startTime = Date.now()
     const normalizedQuery = normalizeSearchText(query)
+    const normalizedIngredientKey = ingredients
+      .map(normalizeSearchText)
+      .sort()
+      .join(',')
+    const cacheQueryKey = hasIngredientFilter
+      ? `${normalizedQuery} | ingredients:${normalizedIngredientKey}`
+      : normalizedQuery
     const dietFilter = diet || 'veg'
 
     // 1. Try to get popular recipes from database first
-    if (usePopular) {
+    if (usePopular && !hasIngredientFilter) {
       const { data: popularRecipes, error: popularError } = await supabaseAdmin
         .from('popular_recipes')
         .select('*')
@@ -57,7 +70,7 @@ export async function GET(request: Request) {
       const { data: sharedCache, error: sharedCacheError } = await supabaseAdmin
         .from('search_queries')
         .select('recipes_generated')
-        .eq('query_text', normalizedQuery)
+        .eq('query_text', cacheQueryKey)
         .eq('diet_filter', dietFilter)
         .not('recipes_generated', 'is', null)
         .order('created_at', { ascending: false })
@@ -67,7 +80,7 @@ export async function GET(request: Request) {
       const cachedRecipes = sharedCache?.recipes_generated
       if (!sharedCacheError && Array.isArray(cachedRecipes) && cachedRecipes.length > 0) {
         const recipes = withDeterministicIds(cachedRecipes, dietFilter)
-        await logSearch(normalizedQuery, diet, recipes.length, null, Date.now() - startTime)
+        await logSearch(cacheQueryKey, diet, recipes.length, null, Date.now() - startTime)
         return NextResponse.json({
           recipes,
           source: 'database-shared-cache',
@@ -77,26 +90,34 @@ export async function GET(request: Request) {
     }
 
     // 3. Check for similar recipes in database
-    const { data: existingRecipes, error: existingError } = await supabaseAdmin
-      .from('recipes')
-      .select('*')
-      .textSearch('title', query, { type: 'websearch' })
-      .eq('diet_type', dietFilter)
-      .order('view_count', { ascending: false })
-      .limit(5)
+    if (!hasIngredientFilter) {
+      const { data: existingRecipes, error: existingError } = await supabaseAdmin
+        .from('recipes')
+        .select('*')
+        .textSearch('title', query, { type: 'websearch' })
+        .eq('diet_type', dietFilter)
+        .order('view_count', { ascending: false })
+        .limit(5)
 
-    if (!existingError && existingRecipes && existingRecipes.length >= 3) {
-      await logSearch(query, diet, existingRecipes.length, null, Date.now() - startTime)
-      
-      return NextResponse.json({ 
-        recipes: existingRecipes, 
-        source: 'database',
-        cached: false
-      })
+      if (!existingError && existingRecipes && existingRecipes.length >= 3) {
+        await logSearch(query, diet, existingRecipes.length, null, Date.now() - startTime)
+        
+        return NextResponse.json({ 
+          recipes: existingRecipes, 
+          source: 'database',
+          cached: false
+        })
+      }
     }
 
     // 4. Generate new recipes with text provider router (Groq primary, Gemini fallback)
-    const generatedRecipesRaw = await aiRouter.searchRecipes(query, diet || undefined, 6, language)
+    const generatedRecipesRaw = await aiRouter.searchRecipes(
+      query,
+      diet || undefined,
+      6,
+      language,
+      ingredients
+    )
     const generatedRecipes = withDeterministicIds(generatedRecipesRaw, dietFilter)
     const responseTime = Date.now() - startTime
 
@@ -125,7 +146,7 @@ export async function GET(request: Request) {
     }
 
     // 6. Log search query + persist full generated recipe payload as shared cache.
-    await logSearch(normalizedQuery, diet, generatedRecipes.length, generatedRecipes, responseTime)
+    await logSearch(cacheQueryKey, diet, generatedRecipes.length, generatedRecipes, responseTime)
 
     return NextResponse.json({ 
       recipes: generatedRecipes, 
