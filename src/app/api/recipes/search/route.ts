@@ -87,6 +87,15 @@ export async function GET(request: Request) {
           cached: true,
         })
       }
+
+      // If cache exists but has too few recipes, purge it so next request regenerates
+      if (!sharedCacheError && Array.isArray(cachedRecipes) && cachedRecipes.length > 0 && cachedRecipes.length < count) {
+        await supabaseAdmin
+          .from('search_queries')
+          .update({ recipes_generated: null })
+          .eq('query_text', cacheQueryKey)
+          .eq('diet_filter', dietFilter)
+      }
     }
 
     // 3. Check for similar recipes in database
