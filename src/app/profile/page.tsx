@@ -7,9 +7,11 @@ import { recipeCache } from "@/lib/cache";
 import { authService } from "@/lib/auth-supabase";
 import { supabase } from "@/lib/supabase";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import type { User as UserType } from "@/lib/auth-supabase";
 
 export default function ProfilePage() {
+    const router = useRouter();
     const [showClearConfirm, setShowClearConfirm] = useState(false);
     const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
     const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
@@ -147,9 +149,18 @@ export default function ProfilePage() {
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-3">
                     {displayStats.map((stat) => (
-                        <div
+                        <button
                             key={stat.label}
-                            className="bg-white border border-border-gray/30 rounded-2xl p-4 text-center space-y-2"
+                            onClick={() => {
+                                if (stat.label === "Recipes Explored") {
+                                    router.push("/profile/history");
+                                }
+                            }}
+                            className={`bg-white border border-border-gray/30 rounded-2xl p-4 text-center space-y-2 transition-colors ${
+                                stat.label === "Recipes Explored"
+                                    ? "hover:border-primary/40 hover:bg-primary/5"
+                                    : ""
+                            }`}
                         >
                             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
                                 <stat.icon size={18} className="text-primary" strokeWidth={2} />
@@ -158,7 +169,7 @@ export default function ProfilePage() {
                                 <div className="text-xl font-bold text-primary">{stat.value}</div>
                                 <div className="text-xs text-text-medium mt-1">{stat.label}</div>
                             </div>
-                        </div>
+                        </button>
                     ))}
                 </div>
 
