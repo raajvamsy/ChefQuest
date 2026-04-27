@@ -109,7 +109,7 @@ export default function AppHome() {
     <div className="min-h-screen flex flex-col">
 
       {/* Top Nav */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-border-gray/15">
+      <header className="sticky top-0 z-40 bg-white border-b border-border-gray/15">
         <div className="w-full px-5 h-14 flex items-center gap-3">
 
           {/* Logo */}
@@ -178,20 +178,11 @@ export default function AppHome() {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="relative flex items-center justify-center min-h-[62vh] overflow-hidden">
-        {/* Kitchen background */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?auto=format&fit=crop&w=1920&q=60"
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover scale-105 blur-sm opacity-35 select-none pointer-events-none"
-        />
-        <div className="absolute inset-0 bg-background-light/55" />
+      {/* Main content — plain background, fully centered */}
+      <main className="flex-1 bg-background-muted flex items-center justify-center px-6 py-16">
+        <div className="w-full max-w-lg flex flex-col items-center gap-10 text-center">
 
-        {/* Hero content */}
-        <div className="relative z-10 w-full max-w-xl mx-auto px-6 py-16 flex flex-col items-center gap-6 text-center">
+          {/* Heading */}
           <div className="space-y-2">
             <h1 className="text-4xl sm:text-5xl font-bold text-primary leading-tight tracking-tight">
               What are you craving?
@@ -201,62 +192,62 @@ export default function AppHome() {
             </p>
           </div>
 
-          {/* Search bar */}
-          <div className="w-full flex items-center gap-0 bg-white rounded-2xl border border-border-gray/25 shadow-sm overflow-hidden pl-4">
-            <Search size={18} className="text-text-medium shrink-0" strokeWidth={2} />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="e.g. Quick vegetarian pasta..."
-              className="flex-1 px-3 py-4 text-sm text-text-dark placeholder:text-text-medium/55 focus:outline-none bg-transparent"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleUnifiedSearch();
-              }}
-            />
-            <button
-              onClick={() => handleUnifiedSearch()}
-              disabled={!searchQuery.trim() && selectedIngredients.length === 0}
-              className="m-1.5 p-3 rounded-xl bg-primary text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary-dark active:scale-95 transition-all duration-150 shrink-0"
-            >
-              <ArrowRight size={18} strokeWidth={2.5} />
-            </button>
+          {/* Search + ingredients */}
+          <div className="w-full space-y-3">
+            <div className="flex items-center gap-0 bg-white rounded-2xl border border-border-gray/25 shadow-sm overflow-hidden pl-4">
+              <Search size={18} className="text-text-medium shrink-0" strokeWidth={2} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="e.g. Quick vegetarian pasta..."
+                className="flex-1 px-3 py-4 text-sm text-text-dark placeholder:text-text-medium/55 focus:outline-none bg-transparent"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleUnifiedSearch();
+                }}
+              />
+              <button
+                onClick={() => handleUnifiedSearch()}
+                disabled={!searchQuery.trim() && selectedIngredients.length === 0}
+                className="m-1.5 p-3 rounded-xl bg-primary text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary-dark active:scale-95 transition-all duration-150 shrink-0"
+              >
+                <ArrowRight size={18} strokeWidth={2.5} />
+              </button>
+            </div>
+
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowIngredientsSheet(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white border border-border-gray/30 text-sm font-medium text-text-dark shadow-sm hover:border-primary/40 hover:text-primary active:scale-95 transition-all duration-150"
+              >
+                <Plus size={14} strokeWidth={2.5} />
+                {selectedIngredients.length > 0
+                  ? `${selectedIngredients.length} ingredients`
+                  : "By ingredients"}
+              </button>
+            </div>
           </div>
 
-          {/* Sub-actions */}
-          <div className="flex items-center justify-center">
-            <button
-              onClick={() => setShowIngredientsSheet(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/80 border border-border-gray/30 text-sm font-medium text-text-dark shadow-sm hover:border-primary/40 hover:text-primary active:scale-95 transition-all duration-150"
-            >
-              <Plus size={14} strokeWidth={2.5} />
-              {selectedIngredients.length > 0
-                ? `${selectedIngredients.length} ingredients`
-                : "By ingredients"}
-            </button>
+          {/* Category tiles */}
+          <div className="w-full grid grid-cols-4 gap-3">
+            {CATEGORIES.map(({ id, label, Icon, query, diet: catDiet }) => (
+              <button
+                key={id}
+                onClick={() => handleUnifiedSearch(query, catDiet)}
+                className="flex flex-col items-center gap-2.5 py-5 px-2 rounded-2xl bg-white border border-border-gray/20 shadow-sm hover:border-primary/30 hover:shadow-md active:scale-95 transition-all duration-150 group"
+              >
+                <div className="w-11 h-11 rounded-xl bg-background-muted flex items-center justify-center group-hover:bg-primary/8 transition-colors">
+                  <Icon size={22} className="text-text-dark group-hover:text-primary transition-colors" strokeWidth={1.75} />
+                </div>
+                <span className="text-[10px] font-semibold text-text-medium uppercase tracking-wider leading-tight text-center">
+                  {label}
+                </span>
+              </button>
+            ))}
           </div>
-        </div>
-      </section>
 
-      {/* Category tiles */}
-      <section className="bg-white border-t border-border-gray/15 px-6 py-8">
-        <div className="max-w-md mx-auto grid grid-cols-4 gap-3">
-          {CATEGORIES.map(({ id, label, Icon, query, diet: catDiet }) => (
-            <button
-              key={id}
-              onClick={() => handleUnifiedSearch(query, catDiet)}
-              className="flex flex-col items-center gap-2.5 p-4 rounded-2xl bg-background-muted/60 border border-border-gray/20 hover:border-primary/30 hover:bg-primary/5 active:scale-95 transition-all duration-150 group"
-            >
-              <div className="w-10 h-10 rounded-xl bg-white border border-border-gray/25 flex items-center justify-center shadow-sm group-hover:border-primary/20 transition-colors">
-                <Icon size={20} className="text-text-dark group-hover:text-primary transition-colors" strokeWidth={1.75} />
-              </div>
-              <span className="text-[10px] font-semibold text-text-medium uppercase tracking-wider leading-tight text-center">
-                {label}
-              </span>
-            </button>
-          ))}
         </div>
-      </section>
+      </main>
 
       {/* Ingredients Bottom Sheet */}
       {showIngredientsSheet && (
