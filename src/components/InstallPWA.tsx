@@ -73,12 +73,13 @@ export default function InstallPWA() {
   return (
     <button
       onClick={handleInstallClick}
-      className="fixed top-4 right-4 z-50 bg-primary hover:bg-primary-dark text-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 group"
+      className="flex items-center justify-center w-9 h-9 rounded-full bg-primary hover:bg-primary-dark text-white shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 group shrink-0"
       aria-label="Install ChefQuest app"
+      title="Install app"
     >
-      <Download 
-        size={20} 
-        className="group-hover:animate-bounce" 
+      <Download
+        size={17}
+        className="group-hover:animate-bounce"
         strokeWidth={2}
       />
     </button>

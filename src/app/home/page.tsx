@@ -12,6 +12,7 @@ import {
   Timer,
   ChefHat,
   GlassWater,
+  User,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -107,60 +108,74 @@ export default function AppHome() {
 
   return (
     <div className="min-h-screen flex flex-col pb-20">
-      <InstallPWA />
 
       {/* Top Nav */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-border-gray/15">
-        <div className="max-w-screen-lg mx-auto px-6 h-14 flex items-center justify-between">
-          <span className="text-lg font-bold text-primary tracking-tight">ChefQuest</span>
+        <div className="max-w-screen-lg mx-auto px-5 h-14 flex items-center gap-3">
 
-          <div className="flex items-center gap-4">
-            {/* Language — compact inline */}
-            <div className="relative hidden sm:flex items-center gap-1.5">
-              <Languages size={15} className="text-text-medium shrink-0" strokeWidth={2} />
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="appearance-none bg-transparent text-sm font-medium text-text-medium hover:text-text-dark pr-5 focus:outline-none cursor-pointer"
-              >
-                {LANGUAGES.map((lang) => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-0 pointer-events-none">
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="text-text-medium">
-                  <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-            </div>
+          {/* Logo */}
+          <span className="text-lg font-bold text-primary tracking-tight shrink-0">ChefQuest</span>
 
-            {/* Diet toggle — pill */}
-            <div className="relative inline-flex items-center bg-background-muted border border-border-gray/25 rounded-full p-0.5">
-              <div
-                className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] bg-primary rounded-full transition-all duration-300 ease-out ${
-                  diet === "veg" ? "left-0.5" : "left-[calc(50%+2px)]"
-                }`}
-              />
-              <button
-                onClick={() => setDiet("veg")}
-                className={`relative z-10 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
-                  diet === "veg" ? "text-white" : "text-text-medium"
-                }`}
-              >
-                Veg
-              </button>
-              <button
-                onClick={() => setDiet("non-veg")}
-                className={`relative z-10 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
-                  diet === "non-veg" ? "text-white" : "text-text-medium"
-                }`}
-              >
-                Non-Veg
-              </button>
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Language selector */}
+          <div className="relative hidden sm:flex items-center gap-1">
+            <Languages size={14} className="text-text-medium shrink-0" strokeWidth={2} />
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="appearance-none bg-transparent text-sm font-medium text-text-medium hover:text-text-dark pr-4 focus:outline-none cursor-pointer"
+            >
+              {LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.name}
+                </option>
+              ))}
+            </select>
+            <div className="absolute right-0 pointer-events-none">
+              <svg width="9" height="9" viewBox="0 0 12 12" fill="none" className="text-text-medium">
+                <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </div>
           </div>
+
+          {/* Diet toggle */}
+          <div className="relative inline-flex items-center bg-background-muted border border-border-gray/25 rounded-full p-0.5">
+            <div
+              className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] bg-primary rounded-full transition-all duration-300 ease-out ${
+                diet === "veg" ? "left-0.5" : "left-[calc(50%+2px)]"
+              }`}
+            />
+            <button
+              onClick={() => setDiet("veg")}
+              className={`relative z-10 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
+                diet === "veg" ? "text-white" : "text-text-medium"
+              }`}
+            >
+              Veg
+            </button>
+            <button
+              onClick={() => setDiet("non-veg")}
+              className={`relative z-10 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
+                diet === "non-veg" ? "text-white" : "text-text-medium"
+              }`}
+            >
+              Non-Veg
+            </button>
+          </div>
+
+          {/* Profile */}
+          <button
+            onClick={() => router.push("/profile")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border-gray/30 text-xs font-semibold text-text-medium hover:text-text-dark hover:border-border-gray/60 transition-colors shrink-0"
+          >
+            <User size={14} strokeWidth={2} />
+            <span className="hidden sm:inline">Profile</span>
+          </button>
+
+          {/* Install PWA — inline in header */}
+          <InstallPWA />
         </div>
       </header>
 
@@ -217,7 +232,7 @@ export default function AppHome() {
             >
               <Plus size={14} strokeWidth={2.5} />
               {selectedIngredients.length > 0
-                ? `+ ${selectedIngredients.length} ingredients`
+                ? `${selectedIngredients.length} ingredients`
                 : "By ingredients"}
             </button>
 
@@ -367,14 +382,6 @@ export default function AppHome() {
                   ))}
                 </div>
               </div>
-
-              <button
-                onClick={() => handleUnifiedSearch()}
-                disabled={selectedIngredients.length === 0 && !searchQuery.trim()}
-                className="w-full py-3.5 rounded-2xl bg-primary text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary-dark active:scale-[0.98] transition-all"
-              >
-                Search recipes
-              </button>
             </div>
           </div>
         </div>
