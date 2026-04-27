@@ -148,7 +148,7 @@ export default function AppHome() {
             />
             <button
               onClick={() => setDiet("veg")}
-              className={`relative z-10 w-[58px] py-1.5 rounded-full text-xs font-semibold text-center transition-all duration-300 ${
+              className={`relative z-10 w-[70px] py-1.5 rounded-full text-xs font-semibold text-center transition-all duration-300 ${
                 diet === "veg" ? "text-white" : "text-text-medium"
               }`}
             >
@@ -156,7 +156,7 @@ export default function AppHome() {
             </button>
             <button
               onClick={() => setDiet("non-veg")}
-              className={`relative z-10 w-[58px] py-1.5 rounded-full text-xs font-semibold text-center transition-all duration-300 ${
+              className={`relative z-10 w-[70px] py-1.5 rounded-full text-xs font-semibold text-center transition-all duration-300 ${
                 diet === "non-veg" ? "text-white" : "text-text-medium"
               }`}
             >
