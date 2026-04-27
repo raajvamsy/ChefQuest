@@ -3,8 +3,7 @@
 import React, { useEffect, useState, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { RecipeDetails } from "@/lib/gemini";
-import { ArrowLeft, Clock, Users, ChefHat, Loader2, Play, AlertCircle } from "lucide-react";
-import BottomNav from "@/components/BottomNav";
+import { ArrowLeft, Clock, Users, ChefHat, Loader2, Play, AlertCircle, User } from "lucide-react";
 import { recipeCache } from "@/lib/cache";
 import { supabase } from "@/lib/supabase";
 
@@ -24,30 +23,18 @@ function RecipeDetailContent() {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (!session?.access_token) return;
-
                 await fetch('/api/recipes/interaction', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${session.access_token}`,
-                    },
-                    body: JSON.stringify({
-                        recipeId: id,
-                        interactionType: 'viewed',
-                        source: 'recipe_detail_page',
-                    }),
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                    body: JSON.stringify({ recipeId: id, interactionType: 'viewed', source: 'recipe_detail_page' }),
                 });
-            } catch (err) {
-                // Non-blocking analytics event
-            }
+            } catch { /* non-blocking */ }
         };
 
         const fetchRecipe = async () => {
             try {
                 setLoading(true);
                 setError("");
-                
-                // Check cache first
                 const cached = recipeCache.getRecipeDetails(id);
                 if (cached) {
                     setRecipe(cached);
@@ -55,47 +42,34 @@ function RecipeDetailContent() {
                     setLoading(false);
                     return;
                 }
-
-                // Fetch from API if not cached
                 const { data: { session } } = await supabase.auth.getSession();
                 const response = await fetch(`/api/recipes/${id}?lang=${language}`, {
-                    headers: session?.access_token
-                        ? { Authorization: `Bearer ${session.access_token}` }
-                        : {},
+                    headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
                 });
                 const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.message || 'Failed to fetch recipe');
-                }
-                
-                const details = data.recipe;
-                setRecipe(details);
+                if (data.error) throw new Error(data.message || 'Failed to fetch recipe');
+                setRecipe(data.recipe);
                 await logViewedInteraction();
-                
-                // Cache the details
-                recipeCache.setRecipeDetails(id, details);
-            } catch (err) {
+                recipeCache.setRecipeDetails(id, data.recipe);
+            } catch {
                 setError("Failed to load recipe. Please try again.");
             } finally {
                 setLoading(false);
             }
         };
 
-        if (id) {
-            fetchRecipe();
-        }
+        if (id) fetchRecipe();
     }, [id, language]);
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted flex items-center justify-center">
-                <div className="flex flex-col items-center space-y-4">
-                    <div className="relative flex items-center justify-center w-16 h-16">
-                        <Loader2 size={40} className="animate-spin text-primary absolute" strokeWidth={2.5} />
-                        <ChefHat size={20} className="text-primary relative z-10" strokeWidth={2} />
+            <div className="min-h-screen bg-background-muted flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="relative flex items-center justify-center w-14 h-14">
+                        <Loader2 size={36} className="animate-spin text-primary absolute" strokeWidth={2} />
+                        <ChefHat size={18} className="text-primary relative z-10" strokeWidth={2} />
                     </div>
-                    <p className="text-text-medium">Loading recipe...</p>
+                    <p className="text-sm text-text-medium">Loading recipe...</p>
                 </div>
             </div>
         );
@@ -103,140 +77,125 @@ function RecipeDetailContent() {
 
     if (error || !recipe) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted flex items-center justify-center px-6">
+            <div className="min-h-screen bg-background-muted flex items-center justify-center px-6">
                 <div className="text-center space-y-4">
-                    <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mx-auto">
-                        <AlertCircle size={32} className="text-error" strokeWidth={2} />
+                    <div className="w-14 h-14 rounded-full bg-error/10 flex items-center justify-center mx-auto">
+                        <AlertCircle size={28} className="text-error" strokeWidth={2} />
                     </div>
-                    <div className="space-y-2">
-                        <p className="text-error font-medium">{error || "Recipe not found"}</p>
-                        <button
-                            onClick={() => router.back()}
-                            className="text-primary font-medium hover:underline text-sm"
-                        >
-                            Go Back
-                        </button>
-                    </div>
+                    <p className="text-sm font-medium text-error">{error || "Recipe not found"}</p>
+                    <button onClick={() => router.back()} className="text-sm text-primary font-medium hover:underline">Go Back</button>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted pb-24">
+        <div className="min-h-screen bg-background-muted flex flex-col">
+
             {/* Header */}
-            <div className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-border-gray/30 z-10 shadow-sm">
-                <div className="max-w-2xl mx-auto px-6 py-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <button
-                            onClick={() => router.back()}
-                            className="p-2 rounded-full hover:bg-background-muted/50 text-text-dark transition-all active:scale-95 flex-shrink-0"
-                        >
-                            <ArrowLeft size={20} strokeWidth={2} />
-                        </button>
-                        <h1 className="text-base font-semibold text-primary text-wrap min-w-0 flex-1">{recipe.title}</h1>
+            <header className="sticky top-0 z-40 bg-white border-b border-border-gray/15">
+                <div className="w-full px-4 h-14 flex items-center gap-3">
+                    <button
+                        onClick={() => router.back()}
+                        className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-background-muted text-text-dark transition-colors shrink-0"
+                    >
+                        <ArrowLeft size={18} strokeWidth={2} />
+                    </button>
+
+                    <button
+                        onClick={() => router.push("/home")}
+                        className="text-lg font-bold text-primary tracking-tight shrink-0"
+                    >
+                        ChefQuest
+                    </button>
+
+                    <div className="flex-1 min-w-0">
+                        <span className="text-xs font-medium text-text-medium truncate block">{recipe.title}</span>
                     </div>
-                </div>
-            </div>
 
-            <div className="max-w-2xl mx-auto px-6 py-8 space-y-8">
-                {/* Hero Image */}
-                <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden border border-border-gray/30 bg-gradient-to-br from-primary/10 via-primary/5 to-background-muted relative group">
-                    {recipe.image_prompt ? (
-                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/10 via-primary/5 to-background-muted">
-                            <div className="text-center p-6 text-primary/40">
-                                <ChefHat size={48} className="mx-auto mb-2" strokeWidth={1.5} />
-                                <p className="text-sm font-medium">{recipe.title}</p>
-                                <p className="text-xs mt-2 text-text-medium/60 max-w-xs">
-                                    {recipe.image_prompt.slice(0, 100)}...
-                                </p>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <ChefHat size={48} className="text-primary/40" strokeWidth={1.5} />
-                        </div>
-                    )}
+                    <button
+                        onClick={() => router.push("/profile")}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border-gray/30 text-xs font-semibold text-text-medium hover:text-text-dark hover:border-border-gray/60 transition-colors shrink-0"
+                    >
+                        <User size={14} strokeWidth={2} />
+                        <span className="hidden sm:inline">Profile</span>
+                    </button>
                 </div>
+            </header>
 
-                {/* Title and Metadata */}
-                <div className="space-y-4">
-                    <div>
-                        <h2 className="text-3xl font-bold text-text-dark mb-3 break-words">{recipe.title}</h2>
-                        <div className="flex flex-wrap items-center gap-4 text-sm">
-                            <div className="flex items-center gap-1.5 text-text-medium">
-                                <Clock size={16} className="text-primary" strokeWidth={2} />
+            {/* Content */}
+            <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+
+                {/* Hero card — title + meta + CTA */}
+                <div className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-6 space-y-5">
+                    <div className="space-y-3">
+                        <h1 className="text-2xl font-bold text-text-dark leading-tight">{recipe.title}</h1>
+
+                        {/* Meta row */}
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex items-center gap-1.5 text-sm text-text-medium">
+                                <Clock size={14} className="text-primary shrink-0" strokeWidth={2} />
                                 <span>{recipe.time}</span>
                             </div>
-                            <div className="flex items-center gap-1.5 text-text-medium">
-                                <Users size={16} className="text-primary" strokeWidth={2} />
+                            <div className="flex items-center gap-1.5 text-sm text-text-medium">
+                                <Users size={14} className="text-primary shrink-0" strokeWidth={2} />
                                 <span>{recipe.servings}</span>
                             </div>
-                            <div className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wide">
+                            <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-semibold uppercase tracking-wide">
                                 {recipe.difficulty}
-                            </div>
+                            </span>
                         </div>
                     </div>
-                    
-                    <button 
+
+                    <button
                         onClick={() => router.push(`/recipes/${id}/prepare`)}
-                        className="w-full py-4 bg-primary text-white rounded-2xl font-semibold hover:bg-primary-dark transition-all shadow-sm hover:shadow-md active:scale-[0.98] flex items-center justify-center gap-2"
+                        className="w-full py-3.5 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-all shadow-sm hover:shadow-md active:scale-[0.98] flex items-center justify-center gap-2"
                     >
-                        <Play size={18} strokeWidth={2.5} fill="white" />
+                        <Play size={16} strokeWidth={2.5} fill="white" />
                         Start Cooking
                     </button>
                 </div>
 
-                {/* Description */}
+                {/* About */}
                 {recipe.description && (
-                    <div className="bg-white border border-border-gray/30 rounded-2xl p-6 space-y-2">
-                        <h3 className="text-sm font-semibold text-text-medium uppercase tracking-wide">About</h3>
-                        <p className="text-text-dark leading-relaxed">{recipe.description}</p>
+                    <div className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-5 space-y-2">
+                        <h2 className="text-[11px] font-semibold text-text-medium uppercase tracking-widest">About</h2>
+                        <p className="text-sm text-text-dark leading-relaxed">{recipe.description}</p>
                     </div>
                 )}
 
                 {/* Ingredients */}
-                <div className="space-y-4">
-                    <h3 className="text-xl font-bold text-text-dark">Ingredients</h3>
-                    <div className="bg-white border border-border-gray/30 rounded-2xl p-6">
-                        <ul className="space-y-3.5">
-                            {recipe.ingredients.map((ingredient, index) => (
-                                <li key={index} className="flex items-start gap-3 group">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0 group-hover:scale-150 transition-transform" />
-                                    <div className="flex-1">
-                                        <span className="text-text-dark font-semibold">{ingredient.quantity}</span>
-                                        <span className="text-text-medium"> {ingredient.item}</span>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                </div>
-
-                {/* Steps */}
-                <div className="space-y-4">
-                    <h3 className="text-xl font-bold text-text-dark">Instructions</h3>
-                    <div className="space-y-3">
-                        {recipe.steps.map((step) => (
-                            <div
-                                key={step.step_number}
-                                className="bg-white border border-border-gray/30 rounded-2xl p-6 hover:border-primary/30 transition-all duration-200"
-                            >
-                                <div className="flex gap-4">
-                                    <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm flex-shrink-0">
-                                        {step.step_number}
-                                    </div>
-                                    <p className="text-text-dark leading-relaxed flex-1 pt-0.5">
-                                        {step.instruction}
-                                    </p>
-                                </div>
-                            </div>
+                <div className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-5 space-y-4">
+                    <h2 className="text-base font-bold text-text-dark">Ingredients</h2>
+                    <ul className="space-y-3">
+                        {recipe.ingredients.map((ingredient, index) => (
+                            <li key={index} className="flex items-start gap-3">
+                                <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" />
+                                <span className="text-sm text-text-dark">
+                                    <span className="font-semibold">{ingredient.quantity}</span>
+                                    <span className="text-text-medium"> {ingredient.item}</span>
+                                </span>
+                            </li>
                         ))}
-                    </div>
+                    </ul>
                 </div>
-            </div>
 
-            <BottomNav />
+                {/* Instructions */}
+                <div className="space-y-3 pb-6">
+                    <h2 className="text-base font-bold text-text-dark px-1">Instructions</h2>
+                    {recipe.steps.map((step) => (
+                        <div
+                            key={step.step_number}
+                            className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-5 flex gap-4 hover:border-primary/20 transition-colors"
+                        >
+                            <div className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                                {step.step_number}
+                            </div>
+                            <p className="text-sm text-text-dark leading-relaxed flex-1">{step.instruction}</p>
+                        </div>
+                    ))}
+                </div>
+            </main>
         </div>
     );
 }
@@ -244,13 +203,13 @@ function RecipeDetailContent() {
 export default function RecipeDetailPage() {
     return (
         <Suspense fallback={
-            <div className="min-h-screen bg-gradient-to-b from-background-light to-background-muted flex items-center justify-center">
-                <div className="flex flex-col items-center space-y-4">
-                    <div className="relative flex items-center justify-center w-16 h-16">
-                        <Loader2 size={40} className="animate-spin text-primary absolute" strokeWidth={2.5} />
-                        <ChefHat size={20} className="text-primary relative z-10" strokeWidth={2} />
+            <div className="min-h-screen bg-background-muted flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="relative flex items-center justify-center w-14 h-14">
+                        <Loader2 size={36} className="animate-spin text-primary absolute" strokeWidth={2} />
+                        <ChefHat size={18} className="text-primary relative z-10" strokeWidth={2} />
                     </div>
-                    <p className="text-text-medium">Loading recipe...</p>
+                    <p className="text-sm text-text-medium">Loading recipe...</p>
                 </div>
             </div>
         }>
