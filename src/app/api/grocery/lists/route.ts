@@ -208,7 +208,7 @@ export async function POST(request: Request) {
       .update({ total_items: count || 0 })
       .eq('id', list.id)
 
-    return NextResponse.json({ success: true, listId: list.id, added: toInsert.length, merged: toUpdate.length })
+    return NextResponse.json({ success: true, listId: list.id, added: toInsert.length, merged: toUpdate.length, totalAdded: toInsert.length + toUpdate.length })
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 })
   }

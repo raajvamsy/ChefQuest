@@ -19,7 +19,7 @@ function RecipeDetailContent() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [addingToGrocery, setAddingToGrocery] = useState(false);
-    const [addedToGrocery, setAddedToGrocery] = useState(false);
+    const [groceryItemCount, setGroceryItemCount] = useState(0);
 
     useEffect(() => {
         const logViewedInteraction = async () => {
@@ -70,7 +70,7 @@ function RecipeDetailContent() {
     }, [id, language]);
 
     const handleAddToGrocery = async () => {
-        if (!recipe || addingToGrocery || addedToGrocery) return;
+        if (!recipe || addingToGrocery || groceryItemCount > 0) return;
         setAddingToGrocery(true);
         try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -81,7 +81,10 @@ function RecipeDetailContent() {
                 headers,
                 body: JSON.stringify({ recipeKey: id, recipeTitle: recipe.title, ingredients: recipe.ingredients }),
             });
-            if (res.ok) setAddedToGrocery(true);
+            if (res.ok) {
+                const data = await res.json();
+                setGroceryItemCount(data.totalAdded || recipe.ingredients.length);
+            }
         } catch { /* non-blocking */ } finally {
             setAddingToGrocery(false);
         }
@@ -173,25 +176,28 @@ function RecipeDetailContent() {
                     <div className="flex items-center gap-3">
                         {/* Grocery list button */}
                         <button
-                            onClick={addedToGrocery ? () => router.push("/grocery") : handleAddToGrocery}
+                            onClick={groceryItemCount > 0 ? () => router.push("/grocery") : handleAddToGrocery}
                             disabled={addingToGrocery}
-                            title={addedToGrocery ? "View Grocery List" : "Add to Grocery List"}
-                            className={`flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-semibold border transition-all active:scale-[0.98] shrink-0 ${
-                                addedToGrocery
+                            title={groceryItemCount > 0 ? "View Grocery List" : "Add to Grocery List"}
+                            className={`flex items-center justify-center gap-1.5 px-4 py-3.5 rounded-xl font-semibold border transition-all active:scale-[0.98] shrink-0 ${
+                                groceryItemCount > 0
                                     ? "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
                                     : "bg-white border-border-gray/30 text-text-dark hover:border-primary/40 hover:text-primary"
                             }`}
                         >
                             {addingToGrocery ? (
-                                <Loader2 size={16} className="animate-spin" strokeWidth={2} />
-                            ) : addedToGrocery ? (
-                                <CheckCircle2 size={16} strokeWidth={2} />
+                                <Loader2 size={15} className="animate-spin" strokeWidth={2} />
+                            ) : groceryItemCount > 0 ? (
+                                <>
+                                    <ShoppingCart size={15} strokeWidth={2} />
+                                    <span className="text-sm font-bold">{groceryItemCount}</span>
+                                </>
                             ) : (
-                                <ShoppingCart size={16} strokeWidth={2} />
+                                <>
+                                    <ShoppingCart size={15} strokeWidth={2} />
+                                    <span className="text-sm whitespace-nowrap">Add to Grocery</span>
+                                </>
                             )}
-                            <span className="text-sm whitespace-nowrap">
-                                {addedToGrocery ? "View List" : "Grocery List"}
-                            </span>
                         </button>
 
                         {/* Start cooking button */}

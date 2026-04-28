@@ -206,7 +206,7 @@ export default function GroceryPage() {
                         <div className="space-y-1.5">
                             <h2 className="text-xl font-bold text-text-dark">Your list is empty</h2>
                             <p className="text-sm text-text-medium max-w-xs">
-                                Open any recipe and tap "Add to Grocery List" to get started.
+                                Open any recipe and tap <span className="font-semibold">"Add to Grocery"</span> to get started.
                             </p>
                         </div>
                         <button
@@ -214,7 +214,7 @@ export default function GroceryPage() {
                             className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark active:scale-[0.98] transition-all shadow-sm"
                         >
                             <ChefHat size={16} strokeWidth={2} />
-                            Find Recipes
+                            Browse Recipes
                         </button>
                     </div>
                 ) : (
@@ -301,16 +301,18 @@ export default function GroceryPage() {
                 )}
             </main>
 
-            {/* Floating "Add more recipes" button */}
-            <div className="fixed bottom-6 left-0 right-0 flex justify-center pointer-events-none">
-                <button
-                    onClick={() => router.push("/home")}
-                    className="pointer-events-auto flex items-center gap-2 px-6 py-3.5 bg-primary text-white rounded-full font-semibold shadow-lg hover:bg-primary-dark active:scale-[0.98] transition-all"
-                >
-                    <Plus size={18} strokeWidth={2.5} />
-                    Add more recipes
-                </button>
-            </div>
+            {/* Floating "Add more recipes" button — only when list has items */}
+            {totalCount > 0 && (
+                <div className="fixed bottom-6 left-0 right-0 flex justify-center pointer-events-none">
+                    <button
+                        onClick={() => router.push("/home")}
+                        className="pointer-events-auto flex items-center gap-2 px-6 py-3.5 bg-primary text-white rounded-full font-semibold shadow-lg hover:bg-primary-dark active:scale-[0.98] transition-all"
+                    >
+                        <Plus size={18} strokeWidth={2.5} />
+                        Add more recipes
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
