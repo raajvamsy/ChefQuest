@@ -20,7 +20,7 @@ function normalizeRecipe(recipe: Recipe): Recipe {
 
 // Module-level registry: search fetches survive component unmount so results
 // are stored in sessionStorage cache even if the user navigates away early.
-type SearchFetchResult = { recipes: Recipe[]; searchQueryId: string | null; correctedQuery: string | null };
+type SearchFetchResult = { recipes: Recipe[]; searchQueryId: string | null; correctedQuery: string | null; suggestions: string[] };
 const searchFetchRegistry = new Map<string, Promise<SearchFetchResult>>();
 
 async function getOrFetchSearchResults(
@@ -72,6 +72,7 @@ function RecipesPageContent() {
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState("");
     const [correctedQuery, setCorrectedQuery] = useState<string | null>(null);
+    const [suggestions, setSuggestions] = useState<string[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [recipeSearchQueryIds, setRecipeSearchQueryIds] = useState<Record<string, string>>({});
@@ -138,13 +139,14 @@ function RecipesPageContent() {
             const results = ((data.recipes || []) as Recipe[]).map(normalizeRecipe);
             const searchQueryId = typeof data.searchQueryId === "string" ? data.searchQueryId : null;
             const corrected = typeof data.correctedQuery === "string" ? data.correctedQuery : null;
+            const fetchedSuggestions: string[] = Array.isArray(data.suggestions) ? data.suggestions : [];
 
             // Persist to sessionStorage regardless of whether component is still mounted
             recipeCache.setRecipes(cacheQueryKey, undefined, results, 1, language);
-            return { recipes: results, searchQueryId, correctedQuery: corrected };
+            return { recipes: results, searchQueryId, correctedQuery: corrected, suggestions: fetchedSuggestions };
         };
 
-        getOrFetchSearchResults(registryKey, doFetch, ({ recipes: results, searchQueryId, correctedQuery: corrected }) => {
+        getOrFetchSearchResults(registryKey, doFetch, ({ recipes: results, searchQueryId, correctedQuery: corrected, suggestions: fetchedSuggestions }) => {
             setRecipes(results);
             setRecipeSearchQueryIds(
                 searchQueryId
@@ -152,6 +154,7 @@ function RecipesPageContent() {
                     : {}
             );
             if (corrected) setCorrectedQuery(corrected);
+            if (fetchedSuggestions.length > 0) setSuggestions(fetchedSuggestions);
             setCurrentPage(1);
             setLoading(false);
         }).catch(() => {
@@ -275,17 +278,10 @@ function RecipesPageContent() {
                     </button>
 
                     {query && (
-                        <div className="flex flex-col min-w-0 overflow-hidden">
-                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background-muted rounded-full border border-border-gray/20">
-                                <span className="text-xs font-semibold text-text-dark truncate">
-                                    {correctedQuery || query}
-                                </span>
-                            </div>
-                            {correctedQuery && (
-                                <span className="text-[10px] text-text-medium px-3 pt-0.5 truncate">
-                                    Searched: &ldquo;{query}&rdquo;
-                                </span>
-                            )}
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background-muted rounded-full border border-border-gray/20 min-w-0 overflow-hidden">
+                            <span className="text-xs font-semibold text-text-dark truncate">
+                                {correctedQuery || query}
+                            </span>
                         </div>
                     )}
 
@@ -352,6 +348,26 @@ function RecipesPageContent() {
                     )}
                 </div>
             </header>
+
+            {/* Did you mean / spelling correction banner */}
+            {(correctedQuery || suggestions.length > 0) && (
+                <div className="w-full px-5 py-2 bg-amber-50 border-b border-amber-100 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="text-xs text-amber-700">
+                        {correctedQuery
+                            ? <>Showing results for <span className="font-semibold">&ldquo;{correctedQuery}&rdquo;</span> instead of &ldquo;{query}&rdquo;</>
+                            : <>Did you mean</>}
+                    </span>
+                    {suggestions.map((s) => (
+                        <button
+                            key={s}
+                            onClick={() => router.push(`/recipes?q=${encodeURIComponent(s)}&lang=${language}`)}
+                            className="text-xs font-semibold text-amber-800 underline underline-offset-2 hover:text-amber-900 transition-colors"
+                        >
+                            {s}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* Content */}
             <main className="flex-1 w-full px-4 sm:px-6 py-5">

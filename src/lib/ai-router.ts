@@ -93,10 +93,7 @@ export const aiRouter = {
       if (Array.isArray(raw)) {
         return { recipes: raw, correctedQuery: query };
       }
-      return {
-        recipes: raw.recipes || [],
-        correctedQuery: raw.corrected_query || query,
-      };
+      return { recipes: raw.recipes || [], correctedQuery: query };
     } catch {
       return geminiAgent.searchRecipes(query, diet, count, language, ingredients);
     }
