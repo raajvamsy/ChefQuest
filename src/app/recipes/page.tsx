@@ -20,7 +20,7 @@ function normalizeRecipe(recipe: Recipe): Recipe {
 
 // Module-level registry: search fetches survive component unmount so results
 // are stored in sessionStorage cache even if the user navigates away early.
-type SearchFetchResult = { recipes: Recipe[]; searchQueryId: string | null };
+type SearchFetchResult = { recipes: Recipe[]; searchQueryId: string | null; correctedQuery: string | null };
 const searchFetchRegistry = new Map<string, Promise<SearchFetchResult>>();
 
 async function getOrFetchSearchResults(
@@ -71,6 +71,7 @@ function RecipesPageContent() {
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState("");
+    const [correctedQuery, setCorrectedQuery] = useState<string | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [recipeSearchQueryIds, setRecipeSearchQueryIds] = useState<Record<string, string>>({});
@@ -136,19 +137,21 @@ function RecipesPageContent() {
 
             const results = ((data.recipes || []) as Recipe[]).map(normalizeRecipe);
             const searchQueryId = typeof data.searchQueryId === "string" ? data.searchQueryId : null;
+            const corrected = typeof data.correctedQuery === "string" ? data.correctedQuery : null;
 
             // Persist to sessionStorage regardless of whether component is still mounted
             recipeCache.setRecipes(cacheQueryKey, undefined, results, 1, language);
-            return { recipes: results, searchQueryId };
+            return { recipes: results, searchQueryId, correctedQuery: corrected };
         };
 
-        getOrFetchSearchResults(registryKey, doFetch, ({ recipes: results, searchQueryId }) => {
+        getOrFetchSearchResults(registryKey, doFetch, ({ recipes: results, searchQueryId, correctedQuery: corrected }) => {
             setRecipes(results);
             setRecipeSearchQueryIds(
                 searchQueryId
                     ? Object.fromEntries(results.map((r) => [r.id, searchQueryId]))
                     : {}
             );
+            if (corrected) setCorrectedQuery(corrected);
             setCurrentPage(1);
             setLoading(false);
         }).catch(() => {
@@ -271,8 +274,17 @@ function RecipesPageContent() {
                     </button>
 
                     {query && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background-muted rounded-full border border-border-gray/20 min-w-0 overflow-hidden">
-                            <span className="text-xs font-semibold text-text-dark truncate">{query}</span>
+                        <div className="flex flex-col min-w-0 overflow-hidden">
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background-muted rounded-full border border-border-gray/20">
+                                <span className="text-xs font-semibold text-text-dark truncate">
+                                    {correctedQuery || query}
+                                </span>
+                            </div>
+                            {correctedQuery && (
+                                <span className="text-[10px] text-text-medium px-3 pt-0.5 truncate">
+                                    Searched: &ldquo;{query}&rdquo;
+                                </span>
+                            )}
                         </div>
                     )}
 

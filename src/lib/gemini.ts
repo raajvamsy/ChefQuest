@@ -109,7 +109,7 @@ export class GeminiAgent {
         count: number = 5,
         language: string = "en",
         ingredients: string[] = []
-    ): Promise<Recipe[]> {
+    ): Promise<{ recipes: Recipe[]; correctedQuery: string }> {
         try {
             const prompt = RECIPE_SEARCH_PROMPT(query, diet, count, language, ingredients);
 
@@ -117,9 +117,16 @@ export class GeminiAgent {
             const response = await result.response;
             const text = response.text();
 
-            return JSON.parse(text) as Recipe[];
+            const raw = JSON.parse(text);
+            if (Array.isArray(raw)) {
+                return { recipes: raw, correctedQuery: query };
+            }
+            return {
+                recipes: raw.recipes || [],
+                correctedQuery: raw.corrected_query || query,
+            };
         } catch (error) {
-            return [];
+            return { recipes: [], correctedQuery: query };
         }
     }
 

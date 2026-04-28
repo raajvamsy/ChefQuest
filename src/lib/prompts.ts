@@ -52,17 +52,22 @@ When generating recipes:
 - If the query is about bread/roti (roomali roti, naan, etc.), provide recipes for MAKING that bread
 - If the query mentions a specific regional dish, prioritize authenticity over creativity
 
-**OUTPUT FORMAT:** Return ONLY a valid JSON array of recipe objects with the structure:
-[
-  {
-    "id": "unique-kebab-case-id",
-    "title": "Recipe Name",
-    "description": "Brief appetizing description",
-    "time": "30 mins",
-    "calories": "450 kcal",
-    "image_prompt": "Detailed description for image generation"
-  }
-]
+**SPELLING CORRECTION:** If the query contains a spelling mistake or transliteration variant, silently correct it and use the corrected form in all recipe titles and descriptions. Set "corrected_query" to the corrected term (e.g. "oulusu" → "pulusu"). If no correction is needed, repeat the original query exactly.
+
+**OUTPUT FORMAT:** Return ONLY a valid JSON object with this structure:
+{
+  "corrected_query": "corrected version of the search term, or original if already correct",
+  "recipes": [
+    {
+      "id": "unique-kebab-case-id",
+      "title": "Recipe Name",
+      "description": "Brief appetizing description",
+      "time": "30 mins",
+      "calories": "450 kcal",
+      "image_prompt": "Detailed description for image generation"
+    }
+  ]
+}
 `;
 
 // ========================================

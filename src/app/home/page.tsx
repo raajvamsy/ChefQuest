@@ -12,9 +12,11 @@ import {
   ChefHat,
   GlassWater,
   User,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 const LANGUAGES = [
   { code: "en", name: "English" },
@@ -46,6 +48,19 @@ const CATEGORIES = [
   { id: "smoothies", label: "Smoothies", Icon: GlassWater, query: "smoothie recipes" },
 ];
 
+const CUISINES = [
+  { id: "indian", label: "Indian", query: "Indian recipes" },
+  { id: "italian", label: "Italian", query: "Italian recipes" },
+  { id: "chinese", label: "Chinese", query: "Chinese recipes" },
+  { id: "mexican", label: "Mexican", query: "Mexican recipes" },
+  { id: "mediterranean", label: "Mediterranean", query: "Mediterranean recipes" },
+  { id: "thai", label: "Thai", query: "Thai recipes" },
+  { id: "japanese", label: "Japanese", query: "Japanese recipes" },
+  { id: "american", label: "American", query: "American recipes" },
+  { id: "middle-eastern", label: "Middle Eastern", query: "Middle Eastern recipes" },
+  { id: "korean", label: "Korean", query: "Korean recipes" },
+];
+
 export default function AppHome() {
   const router = useRouter();
   const [language, setLanguage] = useState("en");
@@ -53,6 +68,7 @@ export default function AppHome() {
   const [showIngredientsSheet, setShowIngredientsSheet] = useState(false);
   const [ingredientInput, setIngredientInput] = useState("");
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
+  const [isListening, setIsListening] = useState(false);
 
   const suggestedIngredients = [
     "Onion", "Tomato", "Garlic", "Ginger", "Egg",
@@ -105,6 +121,34 @@ export default function AppHome() {
     setShowIngredientsSheet(false);
     router.push(`/recipes?${params.toString()}`);
   };
+
+  const handleVoiceSearch = useCallback(() => {
+    const SpeechRecognition =
+      (typeof window !== "undefined" &&
+        ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) || null;
+    if (!SpeechRecognition) return;
+
+    if (isListening) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = language === "en" ? "en-US" : language;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    setIsListening(true);
+    recognition.start();
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setSearchQuery(transcript);
+      setIsListening(false);
+      // Auto-search after voice input
+      setTimeout(() => handleUnifiedSearch(transcript), 100);
+    };
+
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+  }, [isListening, language, handleUnifiedSearch]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -182,6 +226,18 @@ export default function AppHome() {
                   if (e.key === "Enter") handleUnifiedSearch();
                 }}
               />
+              {/* Voice search button */}
+              <button
+                onClick={handleVoiceSearch}
+                title="Search by voice"
+                className={`p-3 transition-all duration-150 shrink-0 ${
+                  isListening
+                    ? "text-primary animate-pulse"
+                    : "text-text-medium hover:text-primary"
+                }`}
+              >
+                {isListening ? <MicOff size={18} strokeWidth={2} /> : <Mic size={18} strokeWidth={2} />}
+              </button>
               <button
                 onClick={() => handleUnifiedSearch()}
                 disabled={!searchQuery.trim() && selectedIngredients.length === 0}
@@ -220,6 +276,24 @@ export default function AppHome() {
                 </span>
               </button>
             ))}
+          </div>
+
+          {/* Cuisine chips */}
+          <div className="w-full">
+            <p className="text-xs font-semibold text-text-medium uppercase tracking-wider mb-3 text-left">
+              Cuisines
+            </p>
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
+              {CUISINES.map(({ id, label, query }) => (
+                <button
+                  key={id}
+                  onClick={() => handleUnifiedSearch(query)}
+                  className="shrink-0 px-4 py-2 rounded-full bg-white border border-border-gray/25 text-xs font-semibold text-text-dark hover:border-primary/40 hover:text-primary hover:shadow-sm active:scale-95 transition-all duration-150 shadow-sm"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
         </div>

@@ -168,14 +168,14 @@ export async function GET(request: Request) {
 
     // 4. Generate new recipes with text provider router (Groq primary, Gemini fallback)
     console.log(`[search] cache miss for "${query}", generating ${count} recipes via AI`);
-    const generatedRecipesRaw = await aiRouter.searchRecipes(
+    const { recipes: generatedRecipesRaw, correctedQuery } = await aiRouter.searchRecipes(
       query,
       diet || undefined,
       count,
       language,
       ingredients
     )
-    console.log(`[search] AI returned ${generatedRecipesRaw.length} recipes`)
+    console.log(`[search] AI returned ${generatedRecipesRaw.length} recipes, corrected: "${correctedQuery}"`)
     const generatedRecipes = withDeterministicIds(generatedRecipesRaw, dietFilter || undefined)
     const responseTime = Date.now() - startTime
 
@@ -213,11 +213,13 @@ export async function GET(request: Request) {
       authUser?.id ?? null
     )
 
+    const normalizedCorrectedQuery = normalizeSearchText(correctedQuery)
     return NextResponse.json({ 
       recipes: generatedRecipes, 
       source: 'ai',
       cached: false,
       searchQueryId,
+      correctedQuery: normalizedCorrectedQuery !== normalizedQuery ? correctedQuery : undefined,
     })
   } catch (error) {
     return NextResponse.json({ 

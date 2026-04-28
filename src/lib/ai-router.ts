@@ -86,10 +86,17 @@ export const aiRouter = {
     count: number = 5,
     language: string = "en",
     ingredients: string[] = []
-  ): Promise<Recipe[]> {
+  ): Promise<{ recipes: Recipe[]; correctedQuery: string }> {
     try {
       const prompt = RECIPE_SEARCH_PROMPT(query, diet, count, language, ingredients);
-      return await callGroqJson<Recipe[]>(prompt);
+      const raw = await callGroqJson<{ corrected_query?: string; recipes?: Recipe[] } | Recipe[]>(prompt);
+      if (Array.isArray(raw)) {
+        return { recipes: raw, correctedQuery: query };
+      }
+      return {
+        recipes: raw.recipes || [],
+        correctedQuery: raw.corrected_query || query,
+      };
     } catch {
       return geminiAgent.searchRecipes(query, diet, count, language, ingredients);
     }
