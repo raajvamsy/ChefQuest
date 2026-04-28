@@ -75,6 +75,12 @@ export default function GroceryPage() {
             const data = await res.json();
             setList(data.list);
             setItems(data.items || []);
+            // If list is empty/cleared, reset stale recipe button states
+            if (!data.list || !(data.items?.length)) {
+                Object.keys(sessionStorage)
+                    .filter((k) => k.startsWith('grocery_recipe_'))
+                    .forEach((k) => sessionStorage.removeItem(k));
+            }
         } catch {
             // silently fail
         } finally {
