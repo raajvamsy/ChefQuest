@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-server'
-import { getApiUserFromRequest, toUuidOrNull } from '@/lib/api-auth'
+import { getApiUserFromRequest } from '@/lib/api-auth'
+import { toRecipeKey } from '@/lib/recipe-key'
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
     } = await request.json()
 
     const user = await getApiUserFromRequest(request)
-    const safeRecipeId = toUuidOrNull(recipeId)
+    const normalizedRecipeId = toRecipeKey(recipeId)
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
       .from('cooking_step_times')
       .insert({
         cooking_session_id: sessionId,
-        recipe_id: safeRecipeId,
+        recipe_id: normalizedRecipeId,
         user_id: user.id,
         step_number: stepNumber,
         step_instruction: stepInstruction,

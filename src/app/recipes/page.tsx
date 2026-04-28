@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Recipe } from "@/lib/gemini";
 import { Clock, Flame, Loader2, ChefHat, AlertCircle, User } from "lucide-react";
 import { recipeCache } from "@/lib/cache";
+import { supabase } from "@/lib/supabase";
 
 function SkeletonCard() {
     return (
@@ -42,6 +43,7 @@ function RecipesPageContent() {
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    const [recipeSearchQueryIds, setRecipeSearchQueryIds] = useState<Record<string, string>>({});
     const fetchedQuery = useRef<string | null>(null);
     const sentinelRef = useRef<HTMLDivElement>(null);
     const loadingMoreRef = useRef(false);
@@ -66,6 +68,7 @@ function RecipesPageContent() {
                 const cached = recipeCache.getRecipes(cacheQueryKey, diet || undefined, language);
                 if (cached && cached.length > 0) {
                     setRecipes(cached);
+                    setRecipeSearchQueryIds({});
                     setCurrentPage(recipeCache.getRecipesPage(cacheQueryKey, diet || undefined, language));
                     setLoading(false);
                     return;
@@ -80,12 +83,23 @@ function RecipesPageContent() {
                 if (mode) apiParams.set("mode", mode);
                 if (ingredients) apiParams.set("ingredients", ingredients);
 
-                const response = await fetch(`/api/recipes/search?${apiParams.toString()}`);
+                const { data: { session } } = await supabase.auth.getSession();
+                const response = await fetch(`/api/recipes/search?${apiParams.toString()}`, {
+                    headers: session?.access_token
+                        ? { Authorization: `Bearer ${session.access_token}` }
+                        : {},
+                });
                 const data = await response.json();
                 if (data.error) throw new Error(data.message || "Failed to fetch recipes");
 
                 const results = data.recipes || [];
                 setRecipes(results);
+                const searchQueryId = typeof data.searchQueryId === "string" ? data.searchQueryId : null;
+                setRecipeSearchQueryIds(
+                    searchQueryId
+                        ? Object.fromEntries(results.map((recipe: Recipe) => [recipe.id, searchQueryId]))
+                        : {}
+                );
                 setCurrentPage(1);
                 recipeCache.setRecipes(cacheQueryKey, diet || undefined, results, 1, language);
             } catch {
@@ -114,17 +128,29 @@ function RecipesPageContent() {
             if (mode) apiParams.set("mode", mode);
             if (ingredients) apiParams.set("ingredients", ingredients);
 
-            const response = await fetch(`/api/recipes/search?${apiParams.toString()}`);
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch(`/api/recipes/search?${apiParams.toString()}`, {
+                headers: session?.access_token
+                    ? { Authorization: `Bearer ${session.access_token}` }
+                    : {},
+            });
             const data = await response.json();
             if (data.error || !data.recipes) throw new Error("Failed to load more");
 
             const moreRecipes: Recipe[] = data.recipes;
             if (moreRecipes.length === 0) { setHasMore(false); return; }
+            const searchQueryId = typeof data.searchQueryId === "string" ? data.searchQueryId : null;
 
             setRecipes((prev) => {
                 const existingTitles = new Set(prev.map((r) => r.title.toLowerCase()));
                 const unique = moreRecipes.filter((r) => !existingTitles.has(r.title.toLowerCase()));
                 if (unique.length === 0) { setHasMore(false); return prev; }
+                if (searchQueryId) {
+                    setRecipeSearchQueryIds((prevMap) => ({
+                        ...prevMap,
+                        ...Object.fromEntries(unique.map((recipe) => [recipe.id, searchQueryId])),
+                    }));
+                }
                 const updated = [...prev, ...unique];
                 setCurrentPage((p) => {
                     recipeCache.setRecipes(cacheQueryKey, diet || undefined, updated, p + 1, language);
@@ -229,7 +255,12 @@ function RecipesPageContent() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {recipes.map((recipe) => (
-                                <RecipeCard key={recipe.id} recipe={recipe} language={language} />
+                                <RecipeCard
+                                    key={recipe.id}
+                                    recipe={recipe}
+                                    language={language}
+                                    searchQueryId={recipeSearchQueryIds[recipe.id]}
+                                />
                             ))}
                             {loadingMore && Array.from({ length: SKELETON_COUNT }).map((_, i) => (
                                 <SkeletonCard key={`sk-${i}`} />
@@ -268,12 +299,26 @@ function RecipesPageContent() {
     );
 }
 
-function RecipeCard({ recipe, language }: { recipe: Recipe; language?: string }) {
+function RecipeCard({
+    recipe,
+    language,
+    searchQueryId,
+}: {
+    recipe: Recipe;
+    language?: string;
+    searchQueryId?: string;
+}) {
     const router = useRouter();
 
     return (
         <div
-            onClick={() => router.push(`/recipes/${recipe.id}${language ? `?lang=${language}` : ""}`)}
+            onClick={() => {
+                const params = new URLSearchParams();
+                if (language) params.set("lang", language);
+                if (searchQueryId) params.set("sq", searchQueryId);
+                const queryString = params.toString();
+                router.push(`/recipes/${recipe.id}${queryString ? `?${queryString}` : ""}`);
+            }}
             className="bg-white rounded-2xl border border-border-gray/20 shadow-sm p-4 cursor-pointer hover:border-primary/30 hover:shadow-md active:scale-[0.98] transition-all duration-150 flex flex-col gap-2"
         >
             <h3 className="text-xs font-bold text-text-dark leading-snug line-clamp-2">

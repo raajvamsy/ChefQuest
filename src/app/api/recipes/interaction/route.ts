@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-server'
-import { getApiUserFromRequest, toUuidOrNull } from '@/lib/api-auth'
+import { getApiUserFromRequest } from '@/lib/api-auth'
 import { toRecipeKey } from '@/lib/recipe-key'
 
 export async function POST(request: Request) {
   try {
     const { recipeId, interactionType, source, searchQueryId } = await request.json()
     const user = await getApiUserFromRequest(request)
-    const safeRecipeId = toUuidOrNull(recipeId)
     const recipeKey = toRecipeKey(recipeId)
 
     if (!user) {
@@ -18,7 +17,7 @@ export async function POST(request: Request) {
       .from('user_recipe_interactions')
       .insert({
         user_id: user.id,
-        recipe_id: safeRecipeId,
+        recipe_id: recipeKey,
         recipe_key: recipeKey,
         interaction_type: interactionType,
         source: source || 'unknown',

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { RecipeDetails, TaskAdjustment } from "@/lib/gemini";
 import { ArrowLeft, Camera, Check, CheckCircle2, Circle, Loader2, X, Eye, Sparkles, AlertCircle, Lock, Play, Pause, RotateCcw, Bell, BellOff, User } from "lucide-react";
 import { recipeCache } from "@/lib/cache";
@@ -35,7 +35,9 @@ interface PersistedTimerState {
 export default function CookingQuestPage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const id = params.id as string;
+    const searchQueryId = searchParams.get("sq");
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -103,6 +105,7 @@ export default function CookingQuestPage() {
                         body: JSON.stringify({
                             recipeId: id,
                             originalSteps: cached.steps,
+                            searchQueryId: searchQueryId || null,
                         }),
                     });
                     

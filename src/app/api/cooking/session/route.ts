@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-server'
-import { getApiUserFromRequest, toUuidOrNull } from '@/lib/api-auth'
+import { getApiUserFromRequest } from '@/lib/api-auth'
 import { toRecipeKey } from '@/lib/recipe-key'
 
 export async function POST(request: Request) {
   try {
-    const { recipeId, originalSteps } = await request.json()
+    const { recipeId, originalSteps, searchQueryId } = await request.json()
     const user = await getApiUserFromRequest(request)
-    const safeRecipeId = toUuidOrNull(recipeId)
     const recipeKey = toRecipeKey(recipeId)
 
     if (!user) {
@@ -19,7 +18,7 @@ export async function POST(request: Request) {
       .from('cooking_sessions')
       .insert({
         user_id: user.id,
-        recipe_id: safeRecipeId,
+        recipe_id: recipeKey,
         recipe_key: recipeKey,
         session_status: 'in_progress',
         original_steps_count: originalSteps.length,
@@ -36,10 +35,11 @@ export async function POST(request: Request) {
     // Log interaction
     await supabaseAdmin.from('user_recipe_interactions').insert({
       user_id: user.id,
-      recipe_id: safeRecipeId,
+      recipe_id: recipeKey,
       recipe_key: recipeKey,
       interaction_type: 'cook_started',
       source: 'cooking_page',
+      search_query_id: searchQueryId || null,
     })
 
     return NextResponse.json({ session })
@@ -95,12 +95,27 @@ export async function PATCH(request: Request) {
         .single()
 
       if (session) {
+        let latestCookStart: { search_query_id: string | null } | null = null
+        if (session.recipe_key) {
+          const { data } = await supabaseAdmin
+            .from('user_recipe_interactions')
+            .select('search_query_id')
+            .eq('user_id', user.id)
+            .eq('interaction_type', 'cook_started')
+            .eq('recipe_key', session.recipe_key)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+          latestCookStart = data
+        }
+
         await supabaseAdmin.from('user_recipe_interactions').insert({
           user_id: user.id,
           recipe_id: session.recipe_id,
           recipe_key: session.recipe_key,
           interaction_type: 'completed',
           source: 'cooking_page',
+          search_query_id: latestCookStart?.search_query_id || null,
         })
       }
     }

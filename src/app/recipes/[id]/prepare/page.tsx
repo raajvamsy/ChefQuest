@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { RecipeDetails } from "@/lib/gemini";
 import { ArrowLeft, ChefHat, Loader2, Play, Check, Camera, X, User } from "lucide-react";
 import { recipeCache } from "@/lib/cache";
@@ -39,7 +39,9 @@ const commonTools: CookingTool[] = [
 export default function PrepareRecipePage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const id = params.id as string;
+    const searchQueryId = searchParams.get("sq");
 
     const [recipe, setRecipe] = useState<RecipeDetails | null>(null);
     const [loading, setLoading] = useState(true);
@@ -80,6 +82,7 @@ export default function PrepareRecipePage() {
                             recipeId: id,
                             interactionType: 'prepare_started',
                             source: 'prepare_page',
+                            searchQueryId: searchQueryId || null,
                         }),
                     });
                 } catch (error) {
@@ -220,7 +223,10 @@ export default function PrepareRecipePage() {
     const handleStartCooking = () => {
         // Store selected tools in session storage
         sessionStorage.setItem(`recipe_${id}_tools`, JSON.stringify(Array.from(selectedTools)));
-        router.push(`/recipes/${id}/cooking`);
+        const params = new URLSearchParams();
+        if (searchQueryId) params.set("sq", searchQueryId);
+        const queryString = params.toString();
+        router.push(`/recipes/${id}/cooking${queryString ? `?${queryString}` : ""}`);
     };
 
     if (loading || !recipe) {

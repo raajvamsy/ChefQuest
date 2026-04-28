@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
 import { supabaseAdmin } from '@/lib/supabase-server'
 import { aiRouter } from '@/lib/ai-router'
 import { buildDeterministicRecipeId } from '@/lib/recipe-id'
+import { getApiUserFromRequest } from '@/lib/api-auth'
 
 function normalizeSearchText(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, ' ')
@@ -35,6 +35,7 @@ export async function GET(request: Request) {
 
   try {
     const startTime = Date.now()
+    const authUser = await getApiUserFromRequest(request)
     const normalizedQuery = normalizeSearchText(query)
     const normalizedIngredientKey = ingredients
       .map(normalizeSearchText)
@@ -55,11 +56,19 @@ export async function GET(request: Request) {
         .limit(count)
 
       if (!popularError && popularRecipes && popularRecipes.length >= count) {
-        await logSearch(query, diet, popularRecipes.length, null, Date.now() - startTime)
+        const searchQueryId = await logSearch(
+          query,
+          diet,
+          popularRecipes.length,
+          null,
+          Date.now() - startTime,
+          authUser?.id ?? null
+        )
         return NextResponse.json({ 
           recipes: popularRecipes, 
           source: 'database',
-          cached: true
+          cached: true,
+          searchQueryId,
         })
       }
     }
@@ -80,11 +89,19 @@ export async function GET(request: Request) {
       console.log(`[search] shared cache has ${Array.isArray(cachedRecipes) ? cachedRecipes.length : 0} recipes, need ${count}`)
       if (!sharedCacheError && Array.isArray(cachedRecipes) && cachedRecipes.length >= count) {
         const recipes = withDeterministicIds(cachedRecipes.slice(0, count), dietFilter)
-        await logSearch(cacheQueryKey, diet, recipes.length, null, Date.now() - startTime)
+        const searchQueryId = await logSearch(
+          cacheQueryKey,
+          diet,
+          recipes.length,
+          null,
+          Date.now() - startTime,
+          authUser?.id ?? null
+        )
         return NextResponse.json({
           recipes,
           source: 'database-shared-cache',
           cached: true,
+          searchQueryId,
         })
       }
 
@@ -109,11 +126,19 @@ export async function GET(request: Request) {
         .limit(count)
 
       if (!existingError && existingRecipes && existingRecipes.length >= count) {
-        await logSearch(query, diet, existingRecipes.length, null, Date.now() - startTime)
+        const searchQueryId = await logSearch(
+          query,
+          diet,
+          existingRecipes.length,
+          null,
+          Date.now() - startTime,
+          authUser?.id ?? null
+        )
         return NextResponse.json({ 
           recipes: existingRecipes, 
           source: 'database',
-          cached: false
+          cached: false,
+          searchQueryId,
         })
       }
     }
@@ -156,12 +181,20 @@ export async function GET(request: Request) {
     }
 
     // 6. Log search query + persist full generated recipe payload as shared cache.
-    await logSearch(cacheQueryKey, diet, generatedRecipes.length, generatedRecipes, responseTime)
+    const searchQueryId = await logSearch(
+      cacheQueryKey,
+      diet,
+      generatedRecipes.length,
+      generatedRecipes,
+      responseTime,
+      authUser?.id ?? null
+    )
 
     return NextResponse.json({ 
       recipes: generatedRecipes, 
       source: 'ai',
-      cached: false
+      cached: false,
+      searchQueryId,
     })
   } catch (error) {
     return NextResponse.json({ 
@@ -176,28 +209,28 @@ async function logSearch(
   diet: string | null, 
   count: number, 
   recipes: any[] | null,
-  responseTime: number
-) {
+  responseTime: number,
+  userId: string | null
+): Promise<string | null> {
   try {
-    // Try to get user from auth header
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    // Log search with or without user_id (allow anonymous searches)
-    const { error } = await supabaseAdmin.from('search_queries').insert({
-      user_id: user?.id || null,
+    const { data, error } = await supabaseAdmin.from('search_queries').insert({
+      user_id: userId,
       query_text: query,
       diet_filter: diet,
       recipes_count: count,
       recipes_generated: recipes || undefined,
       gemini_model_used: recipes ? aiRouter.textProviderName() : null,
       response_time_ms: responseTime,
-      session_id: user?.id || null,
-    })
+      session_id: userId ? `u:${userId}` : crypto.randomUUID(),
+    }).select('id').single()
     
     if (error) {
       console.error('Failed to log search:', error)
+      return null
     }
+    return data?.id ?? null
   } catch (error) {
     console.error('Error in logSearch:', error)
+    return null
   }
 }

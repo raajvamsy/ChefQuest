@@ -13,6 +13,7 @@ function RecipeDetailContent() {
     const searchParams = useSearchParams();
     const id = params.id as string;
     const language = searchParams.get("lang") || "en";
+    const searchQueryId = searchParams.get("sq");
 
     const [recipe, setRecipe] = useState<RecipeDetails | null>(null);
     const [loading, setLoading] = useState(true);
@@ -26,7 +27,12 @@ function RecipeDetailContent() {
                 await fetch('/api/recipes/interaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-                    body: JSON.stringify({ recipeId: id, interactionType: 'viewed', source: 'recipe_detail_page' }),
+                    body: JSON.stringify({
+                        recipeId: id,
+                        interactionType: 'viewed',
+                        source: 'recipe_detail_page',
+                        searchQueryId: searchQueryId || null,
+                    }),
                 });
             } catch { /* non-blocking */ }
         };
@@ -145,7 +151,13 @@ function RecipeDetailContent() {
                         </div>
                     </div>
                     <button
-                        onClick={() => router.push(`/recipes/${id}/prepare`)}
+                        onClick={() => {
+                            const params = new URLSearchParams();
+                            if (language) params.set("lang", language);
+                            if (searchQueryId) params.set("sq", searchQueryId);
+                            const queryString = params.toString();
+                            router.push(`/recipes/${id}/prepare${queryString ? `?${queryString}` : ""}`);
+                        }}
                         className="w-full py-3.5 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-all shadow-sm hover:shadow-md active:scale-[0.98] flex items-center justify-center gap-2"
                     >
                         <Play size={16} strokeWidth={2.5} fill="white" />
