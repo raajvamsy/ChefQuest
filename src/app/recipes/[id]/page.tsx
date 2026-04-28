@@ -3,7 +3,7 @@
 import React, { useEffect, useState, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { RecipeDetails } from "@/lib/gemini";
-import { ArrowLeft, Clock, Users, ChefHat, Loader2, Play, AlertCircle, User } from "lucide-react";
+import { ArrowLeft, Clock, Users, ChefHat, Loader2, Play, AlertCircle, User, ShoppingCart, CheckCircle2 } from "lucide-react";
 import { recipeCache } from "@/lib/cache";
 import { supabase } from "@/lib/supabase";
 
@@ -18,6 +18,8 @@ function RecipeDetailContent() {
     const [recipe, setRecipe] = useState<RecipeDetails | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [addingToGrocery, setAddingToGrocery] = useState(false);
+    const [addedToGrocery, setAddedToGrocery] = useState(false);
 
     useEffect(() => {
         const logViewedInteraction = async () => {
@@ -66,6 +68,24 @@ function RecipeDetailContent() {
 
         if (id) fetchRecipe();
     }, [id, language]);
+
+    const handleAddToGrocery = async () => {
+        if (!recipe || addingToGrocery || addedToGrocery) return;
+        setAddingToGrocery(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const headers: Record<string, string> = { "Content-Type": "application/json" };
+            if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+            const res = await fetch("/api/grocery/lists", {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ recipeKey: id, recipeTitle: recipe.title, ingredients: recipe.ingredients }),
+            });
+            if (res.ok) setAddedToGrocery(true);
+        } catch { /* non-blocking */ } finally {
+            setAddingToGrocery(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -150,19 +170,45 @@ function RecipeDetailContent() {
                             </span>
                         </div>
                     </div>
-                    <button
-                        onClick={() => {
-                            const params = new URLSearchParams();
-                            if (language) params.set("lang", language);
-                            if (searchQueryId) params.set("sq", searchQueryId);
-                            const queryString = params.toString();
-                            router.push(`/recipes/${id}/prepare${queryString ? `?${queryString}` : ""}`);
-                        }}
-                        className="w-full py-3.5 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-all shadow-sm hover:shadow-md active:scale-[0.98] flex items-center justify-center gap-2"
-                    >
-                        <Play size={16} strokeWidth={2.5} fill="white" />
-                        Start Cooking
-                    </button>
+                    <div className="flex items-center gap-3">
+                        {/* Grocery list button */}
+                        <button
+                            onClick={addedToGrocery ? () => router.push("/grocery") : handleAddToGrocery}
+                            disabled={addingToGrocery}
+                            title={addedToGrocery ? "View Grocery List" : "Add to Grocery List"}
+                            className={`flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-semibold border transition-all active:scale-[0.98] shrink-0 ${
+                                addedToGrocery
+                                    ? "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                                    : "bg-white border-border-gray/30 text-text-dark hover:border-primary/40 hover:text-primary"
+                            }`}
+                        >
+                            {addingToGrocery ? (
+                                <Loader2 size={16} className="animate-spin" strokeWidth={2} />
+                            ) : addedToGrocery ? (
+                                <CheckCircle2 size={16} strokeWidth={2} />
+                            ) : (
+                                <ShoppingCart size={16} strokeWidth={2} />
+                            )}
+                            <span className="text-sm whitespace-nowrap">
+                                {addedToGrocery ? "View List" : "Grocery List"}
+                            </span>
+                        </button>
+
+                        {/* Start cooking button */}
+                        <button
+                            onClick={() => {
+                                const p = new URLSearchParams();
+                                if (language) p.set("lang", language);
+                                if (searchQueryId) p.set("sq", searchQueryId);
+                                const qs = p.toString();
+                                router.push(`/recipes/${id}/prepare${qs ? `?${qs}` : ""}`);
+                            }}
+                            className="flex-1 py-3.5 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-all shadow-sm hover:shadow-md active:scale-[0.98] flex items-center justify-center gap-2"
+                        >
+                            <Play size={16} strokeWidth={2.5} fill="white" />
+                            Start Cooking
+                        </button>
+                    </div>
                 </div>
 
                 {/* 2-column layout */}
