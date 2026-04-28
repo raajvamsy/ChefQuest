@@ -78,6 +78,7 @@ async function extractFoodQuery(rawTranscript: string): Promise<string> {
 }
 
 export async function POST(request: Request) {
+  const startTime = Date.now()
   if (!GROQ_API_KEY) {
     return NextResponse.json({ error: 'Voice transcription not configured' }, { status: 503 })
   }
@@ -99,6 +100,20 @@ export async function POST(request: Request) {
 
     // Step 2: Extract clean food query via chat model (runs in parallel-ish — very fast)
     const cleanedQuery = await extractFoodQuery(rawTranscript)
+
+    // Log voice search usage as an interaction (fire-and-forget)
+    try {
+      const { supabaseAdmin } = await import('@/lib/supabase-server')
+      await supabaseAdmin.from('search_queries').insert({
+        query_text: cleanedQuery,
+        original_query: rawTranscript,
+        corrected_query: cleanedQuery !== rawTranscript ? cleanedQuery : null,
+        recipes_count: 0,
+        session_id: crypto.randomUUID(),
+        gemini_model_used: `whisper:voice_search`,
+        response_time_ms: Date.now() - startTime,
+      })
+    } catch { /* non-critical */ }
 
     return NextResponse.json({ transcript: cleanedQuery, raw: rawTranscript })
   } catch (err) {

@@ -65,7 +65,8 @@ function RecipesPageContent() {
     const language = searchParams.get("lang") || "en";
     const mode = searchParams.get("mode");
     const ingredients = searchParams.get("ingredients");
-    const cacheQueryKey = `${query || ""}|mode=${mode || "query_only"}|ingredients=${ingredients || ""}`;
+    const cuisine = searchParams.get("cuisine");
+    const cacheQueryKey = `${query || ""}|mode=${mode || "query_only"}|ingredients=${ingredients || ""}|cuisine=${cuisine || ""}`;
 
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [loading, setLoading] = useState(true);
@@ -126,6 +127,7 @@ function RecipesPageContent() {
             const apiParams = new URLSearchParams({ q: query, lang: language, count: getCount() });
             if (mode) apiParams.set("mode", mode);
             if (ingredients) apiParams.set("ingredients", ingredients);
+            if (cuisine) apiParams.set("cuisine", cuisine);
 
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch(`/api/recipes/search?${apiParams.toString()}`, {

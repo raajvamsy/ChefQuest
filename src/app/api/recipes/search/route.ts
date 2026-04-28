@@ -89,6 +89,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const rawQuery = searchParams.get('q')
   const diet = searchParams.get('diet')
+  const cuisine = searchParams.get('cuisine') || null   // separate cuisine param for logging
   const language = searchParams.get('lang') || 'en'
   const usePopular = searchParams.get('usePopular') !== 'false'
   const count = Math.min(parseInt(searchParams.get('count') || '12', 10), 20)
@@ -122,6 +123,8 @@ export async function GET(request: Request) {
       ...(wasCorrected && { correctedQuery, originalQuery: rawQuery, suggestions }),
     })
 
+    const baseLogOpts = { rawQuery, correctedQuery: wasCorrected ? correctedQuery : null, suggestions, diet, cuisine }
+
     // ── Step 1: Popular recipes (DB view) ───────────────────────────────────
     if (usePopular && !hasIngredientFilter) {
       let popularQuery = supabaseAdmin
@@ -133,11 +136,7 @@ export async function GET(request: Request) {
       const { data: popularRecipes, error: popularError } = await popularQuery
 
       if (!popularError && popularRecipes && popularRecipes.length >= count) {
-        const searchQueryId = await logSearch({
-          rawQuery, correctedQuery: wasCorrected ? correctedQuery : null,
-          suggestions, diet, count: popularRecipes.length,
-          recipes: null, responseTime: Date.now() - startTime, userId: authUser?.id ?? null,
-        })
+        const searchQueryId = await logSearch({ ...baseLogOpts, count: popularRecipes.length, recipes: null, responseTime: Date.now() - startTime, userId: authUser?.id ?? null })
         return NextResponse.json(withMeta({ recipes: popularRecipes, source: 'database', cached: true, searchQueryId }))
       }
     }
@@ -161,11 +160,7 @@ export async function GET(request: Request) {
 
       if (!sharedCacheError && Array.isArray(cachedRecipes) && cachedRecipes.length >= count) {
         const recipes = withDeterministicIds(cachedRecipes.slice(0, count), dietFilter)
-        const searchQueryId = await logSearch({
-          rawQuery, correctedQuery: wasCorrected ? correctedQuery : null,
-          suggestions, diet, count: recipes.length,
-          recipes: null, responseTime: Date.now() - startTime, userId: authUser?.id ?? null,
-        })
+        const searchQueryId = await logSearch({ ...baseLogOpts, count: recipes.length, recipes: null, responseTime: Date.now() - startTime, userId: authUser?.id ?? null })
         return NextResponse.json(withMeta({ recipes, source: 'database-shared-cache', cached: true, searchQueryId }))
       }
 
@@ -174,6 +169,24 @@ export async function GET(request: Request) {
         let staleQ = supabaseAdmin.from('search_queries').update({ recipes_generated: null }).eq('query_text', cacheQueryKey)
         staleQ = dietFilter ? staleQ.eq('diet_filter', dietFilter) : staleQ.is('diet_filter', null)
         await staleQ
+      }
+
+      // ── Step 2b: Fuzzy cache fallback (pg_trgm similarity ≥ 0.5) ──────────
+      // Catches "pachi pulusu" finding cached "pachi pullusu" etc.
+      if (!hasIngredientFilter) {
+        const { data: fuzzyHit, error: fuzzyError } = await (supabaseAdmin as any).rpc('find_similar_cache', {
+          p_query: normalizedQuery,
+          p_diet: dietFilter,
+          p_min_count: count,
+          p_threshold: 0.5,
+        }).maybeSingle()
+
+        if (!fuzzyError && fuzzyHit && Array.isArray(fuzzyHit.recipes_generated)) {
+          const recipes = withDeterministicIds(fuzzyHit.recipes_generated.slice(0, count), dietFilter)
+          const searchQueryId = await logSearch({ ...baseLogOpts, count: recipes.length, recipes: null, responseTime: Date.now() - startTime, userId: authUser?.id ?? null })
+          console.log(`[search] fuzzy cache hit: "${fuzzyHit.corrected_query}" (score: ${fuzzyHit.similarity_score?.toFixed(2)}) for "${normalizedQuery}"`)
+          return NextResponse.json(withMeta({ recipes, source: 'fuzzy-cache', cached: true, searchQueryId }))
+        }
       }
     }
 
@@ -188,11 +201,7 @@ export async function GET(request: Request) {
       const { data: existingRecipes, error: existingError } = await existingQ
 
       if (!existingError && existingRecipes && existingRecipes.length >= count) {
-        const searchQueryId = await logSearch({
-          rawQuery, correctedQuery: wasCorrected ? correctedQuery : null,
-          suggestions, diet, count: existingRecipes.length,
-          recipes: null, responseTime: Date.now() - startTime, userId: authUser?.id ?? null,
-        })
+        const searchQueryId = await logSearch({ ...baseLogOpts, count: existingRecipes.length, recipes: null, responseTime: Date.now() - startTime, userId: authUser?.id ?? null })
         return NextResponse.json(withMeta({ recipes: existingRecipes, source: 'database', cached: false, searchQueryId }))
       }
     }
@@ -222,11 +231,7 @@ export async function GET(request: Request) {
     }
 
     // ── Step 6: Log + shared cache ───────────────────────────────────────────
-    const searchQueryId = await logSearch({
-      rawQuery, correctedQuery: wasCorrected ? correctedQuery : null,
-      suggestions, diet, count: generatedRecipes.length,
-      recipes: generatedRecipes, responseTime, userId: authUser?.id ?? null,
-    })
+    const searchQueryId = await logSearch({ ...baseLogOpts, count: generatedRecipes.length, recipes: generatedRecipes, responseTime, userId: authUser?.id ?? null })
 
     return NextResponse.json(withMeta({ recipes: generatedRecipes, source: 'ai', cached: false, searchQueryId }))
   } catch (error) {
@@ -239,6 +244,7 @@ async function logSearch(opts: {
   correctedQuery: string | null
   suggestions: string[]
   diet: string | null
+  cuisine: string | null
   count: number
   recipes: any[] | null
   responseTime: number
@@ -247,10 +253,11 @@ async function logSearch(opts: {
   try {
     const { data, error } = await supabaseAdmin.from('search_queries').insert({
       user_id: opts.userId,
-      query_text: opts.correctedQuery ?? opts.rawQuery,   // store corrected as canonical
+      query_text: opts.correctedQuery ?? opts.rawQuery,
       original_query: opts.rawQuery,
-      corrected_query: opts.correctedQuery,               // null if no correction
+      corrected_query: opts.correctedQuery,
       diet_filter: opts.diet,
+      cuisine_filter: opts.cuisine,
       recipes_count: opts.count,
       recipes_generated: opts.recipes || undefined,
       gemini_model_used: opts.recipes ? aiRouter.textProviderName() : null,

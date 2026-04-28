@@ -138,9 +138,10 @@ export default function AppHome() {
         mode = "query_with_ingredients";
       }
 
-      const params = new URLSearchParams({ q: query, lang: language, mode });
-      if (dietOverride) params.set("diet", dietOverride);
-      if (hasIngredients) params.set("ingredients", selectedIngredients.join(","));
+    const params = new URLSearchParams({ q: query, lang: language, mode });
+    if (dietOverride) params.set("diet", dietOverride);
+    if (hasIngredients) params.set("ingredients", selectedIngredients.join(","));
+    if (selectedCuisines.length > 0) params.set("cuisine", selectedCuisines.join(","));
 
       setShowFiltersSheet(false);
       router.push(`/recipes?${params.toString()}`);
