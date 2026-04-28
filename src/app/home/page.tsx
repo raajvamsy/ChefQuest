@@ -77,7 +77,7 @@ export default function AppHome() {
   const [showFiltersSheet, setShowFiltersSheet] = useState(false);
   const [ingredientInput, setIngredientInput] = useState("");
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
-  const [selectedCuisine, setSelectedCuisine] = useState<string | null>(null);
+  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const typingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -99,38 +99,40 @@ export default function AppHome() {
   };
 
   const toggleCuisine = (label: string) => {
-    setSelectedCuisine((prev) => (prev === label ? null : label));
+    setSelectedCuisines((prev) =>
+      prev.includes(label) ? prev.filter((c) => c !== label) : [...prev, label]
+    );
   };
 
   // Build search label for the filter button
   const filterLabel = (() => {
     const parts: string[] = [];
-    if (selectedCuisine) parts.push(selectedCuisine);
+    if (selectedCuisines.length > 0) parts.push(selectedCuisines.join(", "));
     if (selectedIngredients.length > 0) parts.push(`${selectedIngredients.length} ingredient${selectedIngredients.length > 1 ? "s" : ""}`);
     return parts.length > 0 ? parts.join(" · ") : null;
   })();
 
-  const hasFilters = !!(selectedCuisine || selectedIngredients.length > 0);
+  const hasFilters = selectedCuisines.length > 0 || selectedIngredients.length > 0;
 
   const handleUnifiedSearch = useCallback(
     (queryOverride?: string, dietOverride?: "veg" | "non-veg") => {
-      const trimmedQuery = (queryOverride ?? searchQuery).trim();
-      const hasIngredients = selectedIngredients.length > 0;
-      const cuisine = selectedCuisine;
-      if (!trimmedQuery && !hasIngredients && !cuisine) return;
+    const trimmedQuery = (queryOverride ?? searchQuery).trim();
+    const hasIngredients = selectedIngredients.length > 0;
+    const cuisineLabel = selectedCuisines.length > 0 ? selectedCuisines.join(" & ") : null;
+    if (!trimmedQuery && !hasIngredients && !cuisineLabel) return;
 
-      // Build the effective query incorporating cuisine
-      let query = trimmedQuery;
-      let mode = "query_only";
+    // Build the effective query incorporating cuisines
+    let query = trimmedQuery;
+    let mode = "query_only";
 
-      if (cuisine && trimmedQuery) {
-        query = `${cuisine} ${trimmedQuery}`;
-      } else if (cuisine && !trimmedQuery && !hasIngredients) {
-        query = `${cuisine} recipes`;
-      } else if (!trimmedQuery && hasIngredients) {
-        query = cuisine ? `${cuisine} ingredient based recipes` : "ingredient based recipes";
-        mode = "ingredients_only";
-      }
+    if (cuisineLabel && trimmedQuery) {
+      query = `${cuisineLabel} ${trimmedQuery}`;
+    } else if (cuisineLabel && !trimmedQuery && !hasIngredients) {
+      query = `${cuisineLabel} recipes`;
+    } else if (!trimmedQuery && hasIngredients) {
+      query = cuisineLabel ? `${cuisineLabel} ingredient based recipes` : "ingredient based recipes";
+      mode = "ingredients_only";
+    }
 
       if (trimmedQuery && hasIngredients) {
         mode = "query_with_ingredients";
@@ -143,7 +145,7 @@ export default function AppHome() {
       setShowFiltersSheet(false);
       router.push(`/recipes?${params.toString()}`);
     },
-    [searchQuery, selectedIngredients, selectedCuisine, language, router]
+    [searchQuery, selectedIngredients, selectedCuisines, language, router]
   );
 
   const animateTyping = useCallback((transcript: string) => {
@@ -229,7 +231,7 @@ export default function AppHome() {
     }
   }, [voiceState, language, animateTyping, stopRecording]);
 
-  const isSearchable = !!(searchQuery.trim() || selectedIngredients.length > 0 || selectedCuisine);
+  const isSearchable = !!(searchQuery.trim() || selectedIngredients.length > 0 || selectedCuisines.length > 0);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -349,7 +351,7 @@ export default function AppHome() {
               {/* Clear filters if any active */}
               {hasFilters && (
                 <button
-                  onClick={() => { setSelectedCuisine(null); setSelectedIngredients([]); }}
+                  onClick={() => { setSelectedCuisines([]); setSelectedIngredients([]); }}
                   className="inline-flex items-center gap-1 px-3 py-2 rounded-full border border-border-gray/30 text-xs font-medium text-text-medium hover:text-text-dark hover:border-border-gray/60 transition-colors"
                 >
                   <X size={12} strokeWidth={2.5} /> Clear
@@ -383,12 +385,12 @@ export default function AppHome() {
             </p>
             <div className="flex flex-wrap gap-2 justify-center">
               {CUISINES.map(({ id, label }) => {
-                const isSelected = selectedCuisine === label;
+                const isSelected = selectedCuisines.includes(label);
                 return (
                   <button
                     key={id}
                     onClick={() => toggleCuisine(label)}
-                    className={`shrink-0 px-4 py-2 rounded-full text-xs font-semibold border transition-all duration-150 shadow-sm active:scale-95 ${
+                    className={`px-4 py-2 rounded-full text-xs font-semibold border transition-all duration-150 shadow-sm active:scale-95 ${
                       isSelected
                         ? "bg-primary text-white border-primary shadow-md"
                         : "bg-white border-border-gray/25 text-text-dark hover:border-primary/40 hover:text-primary hover:shadow-sm"
@@ -399,9 +401,9 @@ export default function AppHome() {
                 );
               })}
             </div>
-            {selectedCuisine && (
-              <p className="text-xs text-primary mt-2 text-left font-medium">
-                {selectedCuisine} selected — add ingredients or search to refine, or tap the arrow to explore.
+            {selectedCuisines.length > 0 && (
+              <p className="text-xs text-primary mt-2 text-center font-medium">
+                {selectedCuisines.join(", ")} selected — tap the arrow to search, or refine further.
               </p>
             )}
           </div>
@@ -436,16 +438,16 @@ export default function AppHome() {
             </div>
 
             {/* Active context summary */}
-            {(searchQuery.trim() || selectedCuisine || selectedIngredients.length > 0) && (
+            {(searchQuery.trim() || selectedCuisines.length > 0 || selectedIngredients.length > 0) && (
               <div className="mb-5 rounded-2xl border border-border-gray/30 bg-background-muted/35 p-3 space-y-1">
                 {searchQuery.trim() && (
                   <p className="text-xs text-text-medium">
                     Search: <span className="font-semibold text-text-dark">&ldquo;{searchQuery.trim()}&rdquo;</span>
                   </p>
                 )}
-                {selectedCuisine && (
+                {selectedCuisines.length > 0 && (
                   <p className="text-xs text-text-medium">
-                    Cuisine: <span className="font-semibold text-primary">{selectedCuisine}</span>
+                    Cuisine: <span className="font-semibold text-primary">{selectedCuisines.join(", ")}</span>
                   </p>
                 )}
                 {selectedIngredients.length > 0 && (
@@ -460,11 +462,11 @@ export default function AppHome() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-text-medium uppercase tracking-wide">
-                  Cuisine
+                  Cuisine <span className="normal-case font-normal">(pick one or more)</span>
                 </p>
-                {selectedCuisine && (
+                {selectedCuisines.length > 0 && (
                   <button
-                    onClick={() => setSelectedCuisine(null)}
+                    onClick={() => setSelectedCuisines([])}
                     className="text-xs font-medium text-text-medium hover:text-text-dark"
                   >
                     Clear
@@ -473,7 +475,7 @@ export default function AppHome() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {CUISINES.map(({ id, label }) => {
-                  const isActive = selectedCuisine === label;
+                  const isActive = selectedCuisines.includes(label);
                   return (
                     <button
                       key={id}
