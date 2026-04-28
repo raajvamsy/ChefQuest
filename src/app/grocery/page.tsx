@@ -75,12 +75,23 @@ export default function GroceryPage() {
             const data = await res.json();
             setList(data.list);
             setItems(data.items || []);
-            // If list is empty/cleared, reset stale recipe button states
-            if (!data.list || !(data.items?.length)) {
-                Object.keys(sessionStorage)
-                    .filter((k) => k.startsWith('grocery_recipe_'))
-                    .forEach((k) => sessionStorage.removeItem(k));
-            }
+
+            // Sync sessionStorage with actual DB state:
+            // count items per recipe_key, then update/remove all grocery_recipe_* entries
+            const dbCounts: Record<string, number> = {};
+            (data.items || []).forEach((item: GroceryItem) => {
+                if (item.recipe_key) dbCounts[item.recipe_key] = (dbCounts[item.recipe_key] || 0) + 1;
+            });
+            Object.keys(sessionStorage)
+                .filter((k) => k.startsWith('grocery_recipe_'))
+                .forEach((k) => {
+                    const recipeKey = k.slice('grocery_recipe_'.length);
+                    if (dbCounts[recipeKey]) {
+                        sessionStorage.setItem(k, String(dbCounts[recipeKey]));
+                    } else {
+                        sessionStorage.removeItem(k);
+                    }
+                });
         } catch {
             // silently fail
         } finally {
