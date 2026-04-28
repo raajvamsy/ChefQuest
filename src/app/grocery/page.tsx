@@ -196,7 +196,7 @@ export default function GroceryPage() {
                 )}
             </header>
 
-            <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-6 pb-28">
+            <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 pb-28">
                 {totalCount === 0 ? (
                     /* Empty state */
                     <div className="flex flex-col items-center justify-center gap-5 py-24 text-center">
@@ -219,7 +219,7 @@ export default function GroceryPage() {
                     </div>
                 ) : (
                     /* Grouped list */
-                    <div className="space-y-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 items-start">
                         {Object.entries(grouped).map(([category, catItems]) => {
                             const Icon = CATEGORY_ICONS[category] || HelpCircle;
                             const colorClass = CATEGORY_COLORS[category] || "text-gray-600 bg-gray-50";
@@ -289,14 +289,16 @@ export default function GroceryPage() {
                             );
                         })}
 
-                        {/* Clear all */}
-                        <button
-                            onClick={clearAll}
-                            disabled={clearing}
-                            className="w-full py-3 text-sm font-semibold text-red-500 border border-red-200 rounded-xl hover:bg-red-50 transition-colors"
-                        >
-                            Clear entire list
-                        </button>
+                        {/* Clear all — spans all columns */}
+                        <div className="md:col-span-2 lg:col-span-3">
+                            <button
+                                onClick={clearAll}
+                                disabled={clearing}
+                                className="w-full py-3 text-sm font-semibold text-red-500 border border-red-200 rounded-xl hover:bg-red-50 transition-colors"
+                            >
+                                Clear entire list
+                            </button>
+                        </div>
                     </div>
                 )}
             </main>
