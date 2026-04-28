@@ -14,6 +14,8 @@ interface RecipesCache {
     recipes: Recipe[];
     timestamp: number;
     page: number;
+    correctedQuery?: string | null;
+    suggestions?: string[];
   };
 }
 
@@ -67,9 +69,26 @@ export const recipeCache = {
   },
 
   /**
+   * Get correction metadata from cache
+   */
+  getRecipesCorrection(query: string, diet?: string, language?: string): { correctedQuery: string | null; suggestions: string[] } {
+    if (typeof window === "undefined") return { correctedQuery: null, suggestions: [] };
+    try {
+      const cacheKey = this.getRecipesCacheKey(query, diet, language);
+      const cached = sessionStorage.getItem(RECIPES_CACHE_KEY);
+      if (!cached) return { correctedQuery: null, suggestions: [] };
+      const cache: RecipesCache = JSON.parse(cached);
+      const entry = cache[cacheKey];
+      return { correctedQuery: entry?.correctedQuery ?? null, suggestions: entry?.suggestions ?? [] };
+    } catch {
+      return { correctedQuery: null, suggestions: [] };
+    }
+  },
+
+  /**
    * Set cached recipes for a search query
    */
-  setRecipes(query: string, diet: string | undefined, recipes: Recipe[], page: number = 1, language?: string): void {
+  setRecipes(query: string, diet: string | undefined, recipes: Recipe[], page: number = 1, language?: string, correctedQuery?: string | null, suggestions?: string[]): void {
     if (typeof window === "undefined") return;
 
     try {
@@ -81,6 +100,8 @@ export const recipeCache = {
         recipes,
         timestamp: Date.now(),
         page,
+        correctedQuery: correctedQuery ?? null,
+        suggestions: suggestions ?? [],
       };
 
       sessionStorage.setItem(RECIPES_CACHE_KEY, JSON.stringify(cache));

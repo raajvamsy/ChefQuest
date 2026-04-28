@@ -115,6 +115,10 @@ function RecipesPageContent() {
             setRecipes(cached.map(normalizeRecipe));
             setRecipeSearchQueryIds({});
             setCurrentPage(recipeCache.getRecipesPage(cacheQueryKey, undefined, language));
+            // Restore correction metadata so the banner shows even on cached results
+            const { correctedQuery: cachedCorrection, suggestions: cachedSuggestions } = recipeCache.getRecipesCorrection(cacheQueryKey, undefined, language);
+            if (cachedCorrection) setCorrectedQuery(cachedCorrection);
+            if (cachedSuggestions?.length > 0) setSuggestions(cachedSuggestions);
             setLoading(false);
             return;
         }
@@ -143,8 +147,8 @@ function RecipesPageContent() {
             const corrected = typeof data.correctedQuery === "string" ? data.correctedQuery : null;
             const fetchedSuggestions: string[] = Array.isArray(data.suggestions) ? data.suggestions : [];
 
-            // Persist to sessionStorage regardless of whether component is still mounted
-            recipeCache.setRecipes(cacheQueryKey, undefined, results, 1, language);
+            // Persist to sessionStorage (including correction metadata) regardless of mount state
+            recipeCache.setRecipes(cacheQueryKey, undefined, results, 1, language, corrected, fetchedSuggestions);
             return { recipes: results, searchQueryId, correctedQuery: corrected, suggestions: fetchedSuggestions };
         };
 

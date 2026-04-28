@@ -184,8 +184,14 @@ export async function GET(request: Request) {
         if (!fuzzyError && fuzzyHit && Array.isArray(fuzzyHit.recipes_generated)) {
           const recipes = withDeterministicIds(fuzzyHit.recipes_generated.slice(0, count), dietFilter)
           const searchQueryId = await logSearch({ ...baseLogOpts, count: recipes.length, recipes: null, responseTime: Date.now() - startTime, userId: authUser?.id ?? null })
-          console.log(`[search] fuzzy cache hit: "${fuzzyHit.corrected_query}" (score: ${fuzzyHit.similarity_score?.toFixed(2)}) for "${normalizedQuery}"`)
-          return NextResponse.json(withMeta({ recipes, source: 'fuzzy-cache', cached: true, searchQueryId }))
+          const fuzzyMatchedQuery = fuzzyHit.query_text as string
+          const fuzzyWasDifferent = normalizeSearchText(fuzzyMatchedQuery) !== normalizeSearchText(rawQuery)
+          console.log(`[search] fuzzy cache hit: "${fuzzyMatchedQuery}" (score: ${(fuzzyHit.similarity_score as number)?.toFixed(2)}) for "${normalizedQuery}"`)
+          // Always show "Showing results for" banner when the fuzzy match is a different term
+          const fuzzyMeta = fuzzyWasDifferent
+            ? { correctedQuery: fuzzyMatchedQuery, originalQuery: rawQuery, suggestions: [] }
+            : (wasCorrected ? { correctedQuery, originalQuery: rawQuery, suggestions } : {})
+          return NextResponse.json({ recipes, source: 'fuzzy-cache', cached: true, searchQueryId, ...fuzzyMeta })
         }
       }
     }
@@ -214,8 +220,9 @@ export async function GET(request: Request) {
     const responseTime = Date.now() - startTime
 
     // ── Step 5: Persist recipes ──────────────────────────────────────────────
+    // Use recipe_key (slug-hash string) as conflict target; let id be auto-generated UUID
     const recipesToInsert = generatedRecipes.map((recipe) => ({
-      id: recipe.id,
+      recipe_key: recipe.id,       // slug-hash e.g. "pachi-pulusu-a1b2c3"
       title: recipe.title,
       description: recipe.description,
       time_minutes: parseInt(recipe.time.replace(/\D/g, '')) || null,
@@ -226,7 +233,7 @@ export async function GET(request: Request) {
       gemini_temperature: 0.4,
     }))
     for (const recipe of recipesToInsert) {
-      const { error } = await supabaseAdmin.from('recipes').upsert(recipe, { onConflict: 'id', ignoreDuplicates: false })
+      const { error } = await supabaseAdmin.from('recipes').upsert(recipe, { onConflict: 'recipe_key', ignoreDuplicates: false })
       if (error) console.error('Failed to upsert recipe:', error)
     }
 
@@ -256,7 +263,7 @@ async function logSearch(opts: {
       query_text: opts.correctedQuery ?? opts.rawQuery,
       original_query: opts.rawQuery,
       corrected_query: opts.correctedQuery,
-      diet_filter: opts.diet,
+      diet_filter: opts.diet || null,
       cuisine_filter: opts.cuisine,
       recipes_count: opts.count,
       recipes_generated: opts.recipes || undefined,
