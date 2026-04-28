@@ -118,7 +118,7 @@ function RecipeDetailContent() {
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border-gray/30 text-xs font-semibold text-text-medium hover:text-text-dark hover:border-border-gray/60 transition-colors shrink-0"
                     >
                         <User size={14} strokeWidth={2} />
-                        <span className="hidden sm:inline">Profile</span>
+                        
                     </button>
                 </div>
             </header>
