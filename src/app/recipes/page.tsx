@@ -257,7 +257,8 @@ function RecipesPageContent() {
         } else {
             params.delete("diet");
         }
-        router.push(`/recipes?${params.toString()}`);
+        // replace instead of push so chip switches don't pollute back-stack
+        router.replace(`/recipes?${params.toString()}`);
     };
 
     return (
