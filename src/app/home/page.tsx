@@ -378,10 +378,10 @@ export default function AppHome() {
 
           {/* Cuisine quick-chips — tap to select as filter */}
           <div className="w-full">
-            <p className="text-xs font-semibold text-text-medium uppercase tracking-wider mb-3 text-left">
+            <p className="text-xs font-semibold text-text-medium uppercase tracking-wider mb-3 text-center">
               Cuisine
             </p>
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
+            <div className="flex flex-wrap gap-2 justify-center">
               {CUISINES.map(({ id, label }) => {
                 const isSelected = selectedCuisine === label;
                 return (
