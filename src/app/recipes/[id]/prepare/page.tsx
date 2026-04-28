@@ -51,11 +51,19 @@ export default function PrepareRecipePage() {
     const [addingToGrocery, setAddingToGrocery] = useState(false);
     const [groceryItemCount, setGroceryItemCount] = useState(0);
     const [cameraActive, setCameraActive] = useState(false);
+
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [identifyingTools, setIdentifyingTools] = useState(false);
     const [stream, setStream] = useState<MediaStream | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    // Restore grocery state from sessionStorage so back-navigation keeps the count
+    useEffect(() => {
+        if (!id) return;
+        const stored = sessionStorage.getItem(`grocery_recipe_${id}`);
+        if (stored) setGroceryItemCount(parseInt(stored, 10) || 0);
+    }, [id]);
 
     const getAuthHeaders = async () => {
         const { data: { session } } = await supabase.auth.getSession();
@@ -223,7 +231,7 @@ export default function PrepareRecipePage() {
     };
 
     const handleAddToGrocery = async () => {
-        if (!recipe || addingToGrocery || groceryItemCount > 0) return;
+        if (!recipe || addingToGrocery) return;
         setAddingToGrocery(true);
         try {
             const authHeaders = await getAuthHeaders();
@@ -239,7 +247,9 @@ export default function PrepareRecipePage() {
             if (res.ok) {
                 const data = await res.json();
                 if (data.totalAdded > 0) {
-                    setGroceryItemCount(data.totalAdded);
+                    const newCount = groceryItemCount + data.totalAdded;
+                    setGroceryItemCount(newCount);
+                    sessionStorage.setItem(`grocery_recipe_${id}`, String(newCount));
                 } else {
                     console.error('Grocery add returned 0 items:', data);
                 }
@@ -409,7 +419,7 @@ export default function PrepareRecipePage() {
                         disabled={addingToGrocery}
                         className={`w-full flex items-center justify-center gap-2 py-3 px-5 rounded-xl font-semibold border transition-all active:scale-[0.98] ${
                             groceryItemCount > 0
-                                ? "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                                ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/15"
                                 : "bg-white border-border-gray/30 text-text-dark hover:border-primary/40 hover:text-primary"
                         }`}
                     >
@@ -419,9 +429,11 @@ export default function PrepareRecipePage() {
                             <ShoppingCart size={16} strokeWidth={2} />
                         )}
                         <span>
-                            {groceryItemCount > 0
-                                ? `${groceryItemCount} items added — View List`
-                                : "Add to Grocery List"}
+                            {addingToGrocery
+                                ? "Adding..."
+                                : groceryItemCount > 0
+                                    ? `${groceryItemCount} items in list — View`
+                                    : "Add to Grocery List"}
                         </span>
                     </button>
 

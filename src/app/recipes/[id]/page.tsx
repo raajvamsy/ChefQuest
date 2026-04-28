@@ -21,6 +21,13 @@ function RecipeDetailContent() {
     const [addingToGrocery, setAddingToGrocery] = useState(false);
     const [groceryItemCount, setGroceryItemCount] = useState(0);
 
+    // Restore grocery state from sessionStorage so back-navigation keeps the count
+    useEffect(() => {
+        if (!id) return;
+        const stored = sessionStorage.getItem(`grocery_recipe_${id}`);
+        if (stored) setGroceryItemCount(parseInt(stored, 10) || 0);
+    }, [id]);
+
     useEffect(() => {
         const logViewedInteraction = async () => {
             try {
@@ -70,7 +77,7 @@ function RecipeDetailContent() {
     }, [id, language]);
 
     const handleAddToGrocery = async () => {
-        if (!recipe || addingToGrocery || groceryItemCount > 0) return;
+        if (!recipe || addingToGrocery) return;
         setAddingToGrocery(true);
         try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -84,7 +91,9 @@ function RecipeDetailContent() {
             if (res.ok) {
                 const data = await res.json();
                 if (data.totalAdded > 0) {
-                    setGroceryItemCount(data.totalAdded);
+                    const newCount = groceryItemCount + data.totalAdded;
+                    setGroceryItemCount(newCount);
+                    sessionStorage.setItem(`grocery_recipe_${id}`, String(newCount));
                 } else {
                     console.error('Grocery add returned 0 items:', data);
                 }
