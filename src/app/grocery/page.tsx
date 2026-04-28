@@ -120,6 +120,8 @@ export default function GroceryPage() {
     const removeRecipe = async (recipeKey: string) => {
         setRemovingRecipe(recipeKey);
         setItems((prev) => prev.filter((i) => i.recipe_key !== recipeKey));
+        // Clear sessionStorage so the recipe page resets to "Add to Grocery"
+        sessionStorage.removeItem(`grocery_recipe_${recipeKey}`);
         try {
             const headers = await getAuthHeaders();
             await fetch(`/api/grocery/lists?recipeKey=${encodeURIComponent(recipeKey)}`, {
@@ -221,8 +223,8 @@ export default function GroceryPage() {
                 {item.is_checked && <Check size={13} className="text-white" strokeWidth={3} />}
             </button>
 
-            <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium leading-tight ${item.is_checked ? "line-through text-text-medium" : "text-text-dark"}`}>
+            <div className="flex-1 min-w-0 overflow-hidden">
+                <p className={`text-sm font-medium leading-tight truncate ${item.is_checked ? "line-through text-text-medium" : "text-text-dark"}`}>
                     {item.ingredient_name}
                 </p>
                 {showRecipe && item.recipe_title && (
@@ -231,7 +233,7 @@ export default function GroceryPage() {
             </div>
 
             {item.quantity && (
-                <span className={`text-xs font-semibold shrink-0 ${item.is_checked ? "text-text-medium/60" : "text-text-medium"}`}>
+                <span className={`text-xs font-semibold shrink-0 max-w-[120px] text-right ${item.is_checked ? "text-text-medium/60" : "text-text-medium"}`}>
                     {item.quantity}
                 </span>
             )}

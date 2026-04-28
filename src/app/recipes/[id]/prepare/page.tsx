@@ -411,38 +411,34 @@ export default function PrepareRecipePage() {
                     </div>
                 </div>
 
-                {/* Footer: grocery button + summary + CTA */}
-                <div className="bg-white border border-border-gray/20 rounded-2xl shadow-sm p-5 space-y-4">
-                    {/* Add to Grocery List */}
-                    <button
-                        onClick={groceryItemCount > 0 ? () => router.push("/grocery") : handleAddToGrocery}
-                        disabled={addingToGrocery}
-                        className={`w-full flex items-center justify-center gap-2 py-3 px-5 rounded-xl font-semibold border transition-all active:scale-[0.98] ${
-                            groceryItemCount > 0
-                                ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/15"
-                                : "bg-white border-border-gray/30 text-text-dark hover:border-primary/40 hover:text-primary"
-                        }`}
-                    >
-                        {addingToGrocery ? (
-                            <Loader2 size={16} className="animate-spin" strokeWidth={2} />
-                        ) : (
-                            <ShoppingCart size={16} strokeWidth={2} />
-                        )}
-                        <span>
-                            {addingToGrocery
-                                ? "Adding..."
-                                : groceryItemCount > 0
-                                    ? `${groceryItemCount} items in list — View`
-                                    : "Add to Grocery List"}
-                        </span>
-                    </button>
-
-                    <div className="flex items-center gap-4">
+                {/* Footer: summary + grocery icon + CTA */}
+                <div className="bg-white border border-border-gray/20 rounded-2xl shadow-sm p-5">
+                    <div className="flex items-center gap-3">
                         <div className="flex-1">
                             <p className="text-xs text-text-medium">Selected tools</p>
                             <p className="text-2xl font-bold text-primary">{selectedTools.size}</p>
                             <p className="text-[11px] text-text-medium mt-0.5">You can always adapt as you go.</p>
                         </div>
+
+                        {/* Compact grocery button */}
+                        <button
+                            onClick={groceryItemCount > 0 ? () => router.push("/grocery") : handleAddToGrocery}
+                            disabled={addingToGrocery}
+                            title={groceryItemCount > 0 ? "View Grocery List" : "Add to Grocery List"}
+                            className={`flex items-center justify-center gap-1.5 px-4 py-3.5 rounded-xl font-semibold border transition-all active:scale-[0.98] shrink-0 ${
+                                groceryItemCount > 0
+                                    ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/15"
+                                    : "bg-white border-border-gray/30 text-text-dark hover:border-primary/40 hover:text-primary"
+                            }`}
+                        >
+                            {addingToGrocery
+                                ? <Loader2 size={15} className="animate-spin" strokeWidth={2} />
+                                : groceryItemCount > 0
+                                    ? <><ShoppingCart size={15} strokeWidth={2} /><span className="text-sm font-bold">{groceryItemCount}</span></>
+                                    : <><ShoppingCart size={15} strokeWidth={2} /><span className="text-sm whitespace-nowrap">Add</span></>
+                            }
+                        </button>
+
                         <button
                             onClick={handleStartCooking}
                             disabled={selectedTools.size === 0}
