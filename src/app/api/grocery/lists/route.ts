@@ -49,34 +49,128 @@ function assignCategory(ingredientName: string): string {
   return 'Other'
 }
 
+// ─── Ingredient name normalization ────────────────────────────────────────
+// Strip parenthetical qualifiers and common descriptors before matching
+function normalizeIngredientName(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/\s*\([^)]*\)/g, '')                     // remove (chopped), (minced), (optional), etc.
+    .replace(/,\s*(optional|to taste|divided|fresh|dry|dried|ground|minced|chopped|sliced|diced|grated|trimmed|cooked|raw|whole|boneless|skinless|skin-on)\s*$/gi, '')
+    .replace(/\s+(optional|to taste|divided)\s*$/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function isSameIngredient(rawA: string, rawB: string): boolean {
+  const a = normalizeIngredientName(rawA)
+  const b = normalizeIngredientName(rawB)
+  if (!a || !b) return false
+  if (a === b) return true
+  // One is a prefix extension of the other: "garlic" vs "garlic cloves", "asparagus" vs "asparagus spears"
+  if (a.startsWith(b + ' ') || b.startsWith(a + ' ')) return true
+  // One contains the other: "extra virgin olive oil" contains "olive oil"
+  if (a.includes(b) || b.includes(a)) return true
+  return false
+}
+
 // ─── Quantity parsing & merging ────────────────────────────────────────────
-function parseQuantity(raw: string): { amount: number | null; unit: string; raw: string } {
-  // Handle fractions like 1/2, 3/4
-  const fractionMatch = raw.match(/^(\d+)\/(\d+)/)
+const UNICODE_FRACTIONS: Record<string, number> = {
+  '½': 0.5, '¼': 0.25, '¾': 0.75,
+  '⅓': 1/3, '⅔': 2/3, '⅛': 0.125, '⅜': 0.375, '⅝': 0.625, '⅞': 0.875,
+}
+
+function parseQuantity(raw: string): { amount: number | null; unit: string } {
+  if (!raw) return { amount: null, unit: '' }
+  const s = raw.trim()
+
+  // "as needed", "to taste", "pinch" — no numeric amount
+  if (/^(as needed|to taste|a pinch|pinch|some|a few|handful)$/i.test(s)) {
+    return { amount: null, unit: s.toLowerCase() }
+  }
+
+  // Replace unicode fractions
+  let normalized = s
+  for (const [sym, val] of Object.entries(UNICODE_FRACTIONS)) {
+    normalized = normalized.replace(sym, ` ${val} `)
+  }
+  normalized = normalized.replace(/\s+/g, ' ').trim()
+
+  // "1 1/2 cups" → 1.5 cups
+  const mixedMatch = normalized.match(/^(\d+)\s+(\d+)\/(\d+)\s*(.*)/)
+  if (mixedMatch) {
+    const amount = parseInt(mixedMatch[1]) + parseInt(mixedMatch[2]) / parseInt(mixedMatch[3])
+    const unit = mixedMatch[4].trim().toLowerCase().split(/\s+/)[0] || ''
+    return { amount, unit }
+  }
+
+  // "1/2 cup"
+  const fractionMatch = normalized.match(/^(\d+)\/(\d+)\s*(.*)/)
   if (fractionMatch) {
     const amount = parseInt(fractionMatch[1]) / parseInt(fractionMatch[2])
-    const rest = raw.slice(fractionMatch[0].length).trim()
-    const unit = rest.split(/\s+/)[0] || ''
-    return { amount, unit: unit.toLowerCase(), raw }
+    const unit = fractionMatch[3].trim().toLowerCase().split(/\s+/)[0] || ''
+    return { amount, unit }
   }
-  const match = raw.match(/^([\d.]+)\s*(.*)/)
-  if (!match) return { amount: null, unit: '', raw }
-  return { amount: parseFloat(match[1]), unit: match[2].trim().toLowerCase().split(/\s+/)[0] || '', raw }
+
+  // "2.5 cups" or "2 cups"
+  const numMatch = normalized.match(/^([\d.]+)\s*(.*)/)
+  if (numMatch) {
+    const amount = parseFloat(numMatch[1])
+    const unit = numMatch[2].trim().toLowerCase().split(/\s+/)[0] || ''
+    return { amount, unit }
+  }
+
+  return { amount: null, unit: '' }
+}
+
+const UNIT_ALIASES: Record<string, string> = {
+  tbsp: 'tablespoon', tablespoons: 'tablespoon', tbsps: 'tablespoon',
+  tsp: 'teaspoon', teaspoons: 'teaspoon', tsps: 'teaspoon',
+  cups: 'cup', c: 'cup',
+  oz: 'ounce', ounces: 'ounce',
+  lb: 'pound', lbs: 'pound', pounds: 'pound',
+  g: 'gram', grams: 'gram', kg: 'kilogram', ml: 'milliliter', l: 'liter',
+  cloves: 'clove', pieces: 'piece', slices: 'slice', sprigs: 'sprig',
+}
+
+function canonicalUnit(unit: string): string {
+  const u = unit.toLowerCase().replace(/s$/, '') // basic plural strip
+  return UNIT_ALIASES[unit.toLowerCase()] || UNIT_ALIASES[u] || unit.toLowerCase()
+}
+
+function formatAmount(n: number): string {
+  if (Number.isInteger(n)) return String(n)
+  // Try to express as a simple fraction
+  const fracs: [number, string][] = [[0.5,'½'],[0.25,'¼'],[0.75,'¾'],[0.33,'⅓'],[0.67,'⅔'],[0.125,'⅛']]
+  for (const [val, sym] of fracs) {
+    if (Math.abs(n - val) < 0.01) return sym
+    if (n > 1 && Math.abs(n - Math.floor(n) - val) < 0.01) return `${Math.floor(n)}${sym}`
+  }
+  return n.toFixed(1).replace(/\.0$/, '')
 }
 
 function mergeQuantities(existing: string, incoming: string): string {
+  // Identical — skip duplicate
+  if (existing.trim().toLowerCase() === incoming.trim().toLowerCase()) return existing
+
   const a = parseQuantity(existing)
   const b = parseQuantity(incoming)
-  if (
-    a.amount !== null &&
-    b.amount !== null &&
-    a.unit === b.unit
-  ) {
-    const total = a.amount + b.amount
-    const totalStr = Number.isInteger(total) ? String(total) : total.toFixed(1).replace(/\.0$/, '')
-    return a.unit ? `${totalStr} ${a.unit}` : totalStr
+
+  // Both "as needed" style — keep just one
+  if (a.amount === null && b.amount === null) {
+    return a.unit === b.unit ? a.unit : `${existing} + ${incoming}`
   }
-  // Different units — concatenate
+
+  if (a.amount !== null && b.amount !== null) {
+    const ua = canonicalUnit(a.unit)
+    const ub = canonicalUnit(b.unit)
+    if (ua === ub) {
+      const total = a.amount + b.amount
+      return ua ? `${formatAmount(total)} ${ua}` : formatAmount(total)
+    }
+  }
+
+  // Different units — concatenate, but avoid exact dupe
   return `${existing} + ${incoming}`
 }
 
@@ -152,36 +246,80 @@ export async function POST(request: Request) {
       .select('id, ingredient_name, quantity, unit')
       .eq('shopping_list_id', list.id)
 
-    const existingMap = new Map<string, { id: string; quantity: string; unit: string }>(
-      (existingItems || []).map((row: any) => [
-        row.ingredient_name.toLowerCase().trim(),
-        { id: row.id, quantity: row.quantity?.toString() || '', unit: row.unit || '' },
-      ])
-    )
+    // Map normalized name → existing row for fuzzy dedup
+    const existingRows: Array<{ id: string; normalizedName: string; rawName: string; quantity: string; unit: string }> =
+      (existingItems || []).map((row: any) => ({
+        id: row.id,
+        normalizedName: normalizeIngredientName(row.ingredient_name),
+        rawName: row.ingredient_name,
+        quantity: row.quantity?.toString() || '',
+        unit: row.unit || '',
+      }))
+
+    function findExisting(rawItem: string) {
+      const normalized = normalizeIngredientName(rawItem)
+      // Exact normalized match first
+      const exact = existingRows.find((r) => r.normalizedName === normalized)
+      if (exact) return exact
+      // Fuzzy match (prefix/contains)
+      return existingRows.find((r) => isSameIngredient(r.rawName, rawItem)) || null
+    }
 
     const toInsert: any[] = []
     const toUpdate: Array<{ id: string; quantity: string }> = []
 
+    // Track newly inserted names within this batch to avoid duplicates in the same request
+    const insertedNormalized = new Set<string>()
+
     for (const { item, quantity } of ingredients) {
-      const normalizedName = item.toLowerCase().trim()
+      if (!item?.trim()) continue
+      const normalizedName = normalizeIngredientName(item)
       const category = assignCategory(item)
-      const existing = existingMap.get(normalizedName)
+      const existing = findExisting(item)
 
       if (existing) {
+        // Already in list — merge quantities
         const merged = mergeQuantities(existing.quantity, quantity)
-        toUpdate.push({ id: existing.id, quantity: merged })
-      } else {
+        // Only queue update if quantity actually changed
+        const alreadyQueued = toUpdate.find((u) => u.id === existing.id)
+        if (alreadyQueued) {
+          alreadyQueued.quantity = mergeQuantities(alreadyQueued.quantity, quantity)
+        } else {
+          toUpdate.push({ id: existing.id, quantity: merged })
+        }
+      } else if (!insertedNormalized.has(normalizedName)) {
+        // New ingredient — use normalized name for cleaner display
+        const cleanName = normalizeIngredientName(item)
+          // Capitalize first letter
+          .replace(/^./, (c) => c.toUpperCase())
         const parsed = parseQuantity(quantity)
         toInsert.push({
           shopping_list_id: list.id,
           recipe_key: recipeKey,
           recipe_title: recipeTitle,
-          ingredient_name: item,
+          ingredient_name: cleanName || item,
           quantity: quantity,
           unit: parsed.unit || null,
           category,
           is_checked: false,
         })
+        insertedNormalized.add(normalizedName)
+        // Add to existingRows so subsequent items in this batch can merge into it
+        existingRows.push({
+          id: '__pending__',
+          normalizedName,
+          rawName: cleanName || item,
+          quantity,
+          unit: parsed.unit || '',
+        })
+      } else {
+        // Duplicate within this batch — merge into the pending insert
+        const pendingIdx = toInsert.findIndex(
+          (t) => normalizeIngredientName(t.ingredient_name) === normalizedName
+        )
+        if (pendingIdx !== -1) {
+          toInsert[pendingIdx].quantity = mergeQuantities(toInsert[pendingIdx].quantity, quantity)
+        }
       }
     }
 
