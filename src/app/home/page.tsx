@@ -13,11 +13,14 @@ import {
   GlassWater,
   User,
   Mic,
-  MicOff,
+  Square,
+  Loader2,
   SlidersHorizontal,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useCallback, useRef } from "react";
+
+type VoiceState = "idle" | "recording" | "transcribing";
 
 const LANGUAGES = [
   { code: "en", name: "English" },
@@ -75,8 +78,13 @@ export default function AppHome() {
   const [ingredientInput, setIngredientInput] = useState("");
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
   const [selectedCuisine, setSelectedCuisine] = useState<string | null>(null);
-  const [isListening, setIsListening] = useState(false);
+  const [voiceState, setVoiceState] = useState<VoiceState>("idle");
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const typingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const addIngredient = (value: string) => {
     const trimmed = value.trim();
@@ -138,48 +146,88 @@ export default function AppHome() {
     [searchQuery, selectedIngredients, selectedCuisine, language, router]
   );
 
-  const handleVoiceSearch = useCallback(() => {
-    const SpeechRecognition =
-      (typeof window !== "undefined" &&
-        ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) ||
-      null;
-    if (!SpeechRecognition || isListening) return;
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = language === "en" ? "en-US" : language;
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    setIsListening(true);
+  const animateTyping = useCallback((transcript: string) => {
+    if (typingTimerRef.current) clearInterval(typingTimerRef.current);
+    let i = 0;
     setSearchQuery("");
-    recognition.start();
+    typingTimerRef.current = setInterval(() => {
+      i++;
+      setSearchQuery(transcript.slice(0, i));
+      if (i >= transcript.length) {
+        clearInterval(typingTimerRef.current!);
+        typingTimerRef.current = null;
+        document.querySelector<HTMLInputElement>("input[data-voice-input]")?.focus();
+      }
+    }, 35);
+  }, []);
 
-    recognition.onresult = (event: any) => {
-      const transcript: string = event.results[0][0].transcript;
-      setIsListening(false);
+  const stopRecording = useCallback(() => {
+    if (recordingTimerRef.current) { clearInterval(recordingTimerRef.current); recordingTimerRef.current = null; }
+    if (autoStopTimerRef.current) { clearTimeout(autoStopTimerRef.current); autoStopTimerRef.current = null; }
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop(); // triggers onstop → transcribe
+    }
+  }, []);
 
-      // Clear any previous typing animation
-      if (typingTimerRef.current) clearInterval(typingTimerRef.current);
+  const handleVoiceSearch = useCallback(async () => {
+    // If already recording, stop it
+    if (voiceState === "recording") { stopRecording(); return; }
+    if (voiceState !== "idle") return;
 
-      // Typing animation — reveal transcript character by character
-      let i = 0;
-      setSearchQuery("");
-      typingTimerRef.current = setInterval(() => {
-        i++;
-        setSearchQuery(transcript.slice(0, i));
-        if (i >= transcript.length) {
-          clearInterval(typingTimerRef.current!);
-          typingTimerRef.current = null;
-          // Focus the input so user can edit
-          const input = document.querySelector<HTMLInputElement>('input[data-voice-input]');
-          input?.focus();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : "";
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      audioChunksRef.current = [];
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        setVoiceState("transcribing");
+        setRecordingSeconds(0);
+
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        if (blob.size < 1000) { setVoiceState("idle"); return; } // too short / empty
+
+        try {
+          const form = new FormData();
+          form.append("audio", blob, "recording.webm");
+          form.append("language", language);
+
+          const res = await fetch("/api/voice/transcribe", { method: "POST", body: form });
+          const data = await res.json();
+
+          if (data.transcript) {
+            animateTyping(data.transcript);
+          }
+        } catch {
+          // silent fail — user can type manually
+        } finally {
+          setVoiceState("idle");
         }
-      }, 35);
-    };
+      };
 
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => setIsListening(false);
-  }, [isListening, language]);
+      recorder.start(250); // collect chunks every 250ms
+      setVoiceState("recording");
+      setRecordingSeconds(0);
+
+      // Tick counter
+      recordingTimerRef.current = setInterval(() => setRecordingSeconds((s) => s + 1), 1000);
+
+      // Auto-stop after 30s
+      autoStopTimerRef.current = setTimeout(() => stopRecording(), 30000);
+    } catch {
+      setVoiceState("idle"); // mic permission denied or not available
+    }
+  }, [voiceState, language, animateTyping, stopRecording]);
 
   const isSearchable = !!(searchQuery.trim() || selectedIngredients.length > 0 || selectedCuisine);
 
@@ -250,14 +298,30 @@ export default function AppHome() {
               {/* Voice search */}
               <button
                 onClick={handleVoiceSearch}
-                title="Search by voice"
-                className={`p-3 transition-all duration-150 shrink-0 ${
-                  isListening ? "text-primary animate-pulse" : "text-text-medium hover:text-primary"
+                title={voiceState === "recording" ? "Stop recording" : "Search by voice"}
+                disabled={voiceState === "transcribing"}
+                className={`px-2 py-3 transition-all duration-150 shrink-0 flex items-center gap-1 ${
+                  voiceState === "recording"
+                    ? "text-red-500"
+                    : voiceState === "transcribing"
+                    ? "text-text-medium/50 cursor-not-allowed"
+                    : "text-text-medium hover:text-primary"
                 }`}
               >
-                {isListening
-                  ? <MicOff size={18} strokeWidth={2} />
-                  : <Mic size={18} strokeWidth={2} />}
+                {voiceState === "recording" ? (
+                  <>
+                    <span className="relative flex h-2 w-2 mr-0.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                    </span>
+                    <span className="text-[11px] font-semibold tabular-nums">{recordingSeconds}s</span>
+                    <Square size={15} strokeWidth={2.5} className="ml-0.5" />
+                  </>
+                ) : voiceState === "transcribing" ? (
+                  <Loader2 size={18} strokeWidth={2} className="animate-spin" />
+                ) : (
+                  <Mic size={18} strokeWidth={2} />
+                )}
               </button>
               <button
                 onClick={() => handleUnifiedSearch()}
