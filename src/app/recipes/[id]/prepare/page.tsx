@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { RecipeDetails } from "@/lib/gemini";
-import { ArrowLeft, ChefHat, Loader2, Play, Check, Camera, X, User } from "lucide-react";
+import { ArrowLeft, ChefHat, Loader2, Play, Check, Camera, X, User, ShoppingCart, CheckCircle2 } from "lucide-react";
 import { recipeCache } from "@/lib/cache";
 import { geminiAgent } from "@/lib/gemini";
 import { supabase } from "@/lib/supabase";
@@ -48,6 +48,8 @@ export default function PrepareRecipePage() {
     const [suggestedTools, setSuggestedTools] = useState<string[]>([]);
     const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [addingToGrocery, setAddingToGrocery] = useState(false);
+    const [addedToGrocery, setAddedToGrocery] = useState(false);
     const [cameraActive, setCameraActive] = useState(false);
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [identifyingTools, setIdentifyingTools] = useState(false);
@@ -220,6 +222,30 @@ export default function PrepareRecipePage() {
         }
     };
 
+    const handleAddToGrocery = async () => {
+        if (!recipe || addingToGrocery || addedToGrocery) return;
+        setAddingToGrocery(true);
+        try {
+            const authHeaders = await getAuthHeaders();
+            const res = await fetch("/api/grocery/lists", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", ...authHeaders },
+                body: JSON.stringify({
+                    recipeKey: id,
+                    recipeTitle: recipe.title,
+                    ingredients: recipe.ingredients,
+                }),
+            });
+            if (res.ok) {
+                setAddedToGrocery(true);
+            }
+        } catch {
+            // silently fail
+        } finally {
+            setAddingToGrocery(false);
+        }
+    };
+
     const handleStartCooking = () => {
         // Store selected tools in session storage
         sessionStorage.setItem(`recipe_${id}_tools`, JSON.stringify(Array.from(selectedTools)));
@@ -367,21 +393,45 @@ export default function PrepareRecipePage() {
                     </div>
                 </div>
 
-                {/* Footer: summary + CTA */}
-                <div className="bg-white border border-border-gray/20 rounded-2xl shadow-sm p-5 flex items-center gap-4">
-                    <div className="flex-1">
-                        <p className="text-xs text-text-medium">Selected tools</p>
-                        <p className="text-2xl font-bold text-primary">{selectedTools.size}</p>
-                        <p className="text-[11px] text-text-medium mt-0.5">You can always adapt as you go.</p>
-                    </div>
+                {/* Footer: grocery button + summary + CTA */}
+                <div className="bg-white border border-border-gray/20 rounded-2xl shadow-sm p-5 space-y-4">
+                    {/* Add to Grocery List */}
                     <button
-                        onClick={handleStartCooking}
-                        disabled={selectedTools.size === 0}
-                        className="py-3 px-6 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-all shadow-sm hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shrink-0"
+                        onClick={addedToGrocery ? () => router.push("/grocery") : handleAddToGrocery}
+                        disabled={addingToGrocery}
+                        className={`w-full flex items-center justify-center gap-2 py-3 px-5 rounded-xl font-semibold border transition-all active:scale-[0.98] ${
+                            addedToGrocery
+                                ? "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                                : "bg-white border-border-gray/30 text-text-dark hover:border-primary/40 hover:text-primary"
+                        }`}
                     >
-                        <Play size={16} strokeWidth={2.5} fill="white" />
-                        <span>Start Cooking</span>
+                        {addingToGrocery ? (
+                            <Loader2 size={16} className="animate-spin" strokeWidth={2} />
+                        ) : addedToGrocery ? (
+                            <CheckCircle2 size={16} strokeWidth={2} />
+                        ) : (
+                            <ShoppingCart size={16} strokeWidth={2} />
+                        )}
+                        <span>
+                            {addedToGrocery ? "View Grocery List" : "Add to Grocery List"}
+                        </span>
                     </button>
+
+                    <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                            <p className="text-xs text-text-medium">Selected tools</p>
+                            <p className="text-2xl font-bold text-primary">{selectedTools.size}</p>
+                            <p className="text-[11px] text-text-medium mt-0.5">You can always adapt as you go.</p>
+                        </div>
+                        <button
+                            onClick={handleStartCooking}
+                            disabled={selectedTools.size === 0}
+                            className="py-3 px-6 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-all shadow-sm hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shrink-0"
+                        >
+                            <Play size={16} strokeWidth={2.5} fill="white" />
+                            <span>Start Cooking</span>
+                        </button>
+                    </div>
                 </div>
             </main>
 

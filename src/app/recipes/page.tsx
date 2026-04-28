@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef, useCallback, Suspense, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Recipe } from "@/lib/gemini";
-import { Clock, Flame, Loader2, ChefHat, AlertCircle, User, Search, X } from "lucide-react";
+import { Clock, Flame, Loader2, ChefHat, AlertCircle, User, Search, X, ShoppingCart } from "lucide-react";
 import { recipeCache } from "@/lib/cache";
 import { supabase } from "@/lib/supabase";
 
@@ -293,6 +293,13 @@ function RecipesPageContent() {
 
                     <div className="flex-1" />
 
+                    <button
+                        onClick={() => router.push("/grocery")}
+                        title="Grocery List"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border-gray/30 text-xs font-semibold text-text-medium hover:text-text-dark hover:border-border-gray/60 transition-colors shrink-0"
+                    >
+                        <ShoppingCart size={14} strokeWidth={2} />
+                    </button>
                     <button
                         onClick={() => router.push("/profile")}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border-gray/30 text-xs font-semibold text-text-medium hover:text-text-dark hover:border-border-gray/60 transition-colors shrink-0"
