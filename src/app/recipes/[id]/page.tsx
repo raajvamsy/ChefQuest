@@ -83,7 +83,14 @@ function RecipeDetailContent() {
             });
             if (res.ok) {
                 const data = await res.json();
-                setGroceryItemCount(data.totalAdded || recipe.ingredients.length);
+                if (data.totalAdded > 0) {
+                    setGroceryItemCount(data.totalAdded);
+                } else {
+                    console.error('Grocery add returned 0 items:', data);
+                }
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                console.error('Grocery add failed:', res.status, errData);
             }
         } catch { /* non-blocking */ } finally {
             setAddingToGrocery(false);
@@ -181,7 +188,7 @@ function RecipeDetailContent() {
                             title={groceryItemCount > 0 ? "View Grocery List" : "Add to Grocery List"}
                             className={`flex items-center justify-center gap-1.5 px-4 py-3.5 rounded-xl font-semibold border transition-all active:scale-[0.98] shrink-0 ${
                                 groceryItemCount > 0
-                                    ? "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                                    ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/15"
                                     : "bg-white border-border-gray/30 text-text-dark hover:border-primary/40 hover:text-primary"
                             }`}
                         >

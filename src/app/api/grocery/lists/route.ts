@@ -187,7 +187,11 @@ export async function POST(request: Request) {
 
     // Batch insert new items
     if (toInsert.length > 0) {
-      await supabaseAdmin.from('shopping_list_items').insert(toInsert)
+      const { error: insertError } = await (supabaseAdmin as any).from('shopping_list_items').insert(toInsert)
+      if (insertError) {
+        console.error('shopping_list_items insert error:', insertError)
+        throw insertError
+      }
     }
     // Update merged quantities
     for (const { id, quantity } of toUpdate) {

@@ -238,7 +238,14 @@ export default function PrepareRecipePage() {
             });
             if (res.ok) {
                 const data = await res.json();
-                setGroceryItemCount(data.totalAdded || recipe?.ingredients?.length || 0);
+                if (data.totalAdded > 0) {
+                    setGroceryItemCount(data.totalAdded);
+                } else {
+                    console.error('Grocery add returned 0 items:', data);
+                }
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                console.error('Grocery add failed:', res.status, errData);
             }
         } catch {
             // silently fail
