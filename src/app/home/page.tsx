@@ -40,15 +40,14 @@ const LANGUAGES = [
 ];
 
 const CATEGORIES = [
-  { id: "vegetarian", label: "Vegetarian", Icon: Leaf, query: "vegetarian recipes", diet: "veg" as const },
-  { id: "quick-meals", label: "Quick Meals", Icon: Timer, query: "quick meals under 30 minutes", diet: "veg" as const },
-  { id: "baking", label: "Baking", Icon: ChefHat, query: "baking recipes", diet: "veg" as const },
-  { id: "smoothies", label: "Smoothies", Icon: GlassWater, query: "smoothie recipes", diet: "veg" as const },
+  { id: "vegetarian", label: "Vegetarian", Icon: Leaf, query: "vegetarian recipes" },
+  { id: "quick-meals", label: "Quick Meals", Icon: Timer, query: "quick meals under 30 minutes" },
+  { id: "baking", label: "Baking", Icon: ChefHat, query: "baking recipes" },
+  { id: "smoothies", label: "Smoothies", Icon: GlassWater, query: "smoothie recipes" },
 ];
 
 export default function AppHome() {
   const router = useRouter();
-  const [diet, setDiet] = useState<"veg" | "non-veg">("veg");
   const [language, setLanguage] = useState("en");
   const [searchQuery, setSearchQuery] = useState("");
   const [showIngredientsSheet, setShowIngredientsSheet] = useState(false);
@@ -92,10 +91,12 @@ export default function AppHome() {
 
     const params = new URLSearchParams({
       q: query,
-      diet: dietOverride ?? diet,
       lang: language,
       mode,
     });
+    if (dietOverride) {
+      params.set("diet", dietOverride);
+    }
 
     if (hasIngredients) {
       params.set("ingredients", selectedIngredients.join(","));
@@ -137,31 +138,6 @@ export default function AppHome() {
                 <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-          </div>
-
-          {/* Diet toggle */}
-          <div className="relative inline-flex items-center bg-background-muted border border-border-gray/25 rounded-full p-0.5 shrink-0">
-            <div
-              className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] bg-primary rounded-full transition-all duration-300 ease-out ${
-                diet === "veg" ? "left-0.5" : "left-[calc(50%+2px)]"
-              }`}
-            />
-            <button
-              onClick={() => setDiet("veg")}
-              className={`relative z-10 w-[70px] py-1.5 rounded-full text-xs font-semibold text-center transition-all duration-300 ${
-                diet === "veg" ? "text-white" : "text-text-medium"
-              }`}
-            >
-              Veg
-            </button>
-            <button
-              onClick={() => setDiet("non-veg")}
-              className={`relative z-10 w-[70px] py-1.5 rounded-full text-xs font-semibold text-center transition-all duration-300 ${
-                diet === "non-veg" ? "text-white" : "text-text-medium"
-              }`}
-            >
-              Non-Veg
-            </button>
           </div>
 
           {/* Profile */}
@@ -230,10 +206,10 @@ export default function AppHome() {
 
           {/* Category tiles */}
           <div className="w-full grid grid-cols-4 gap-3">
-            {CATEGORIES.map(({ id, label, Icon, query, diet: catDiet }) => (
+            {CATEGORIES.map(({ id, label, Icon, query }) => (
               <button
                 key={id}
-                onClick={() => handleUnifiedSearch(query, catDiet)}
+                onClick={() => handleUnifiedSearch(query)}
                 className="flex flex-col items-center gap-2.5 py-5 px-2 rounded-2xl bg-white border border-border-gray/20 shadow-sm hover:border-primary/30 hover:shadow-md active:scale-95 transition-all duration-150 group"
               >
                 <div className="w-11 h-11 rounded-xl bg-background-muted flex items-center justify-center group-hover:bg-primary/8 transition-colors">

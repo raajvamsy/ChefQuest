@@ -8,10 +8,22 @@ function normalizeSearchText(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
+type DietType = 'veg' | 'non-veg'
+
+function inferDietType(recipe: any): DietType {
+  const text = `${recipe?.title || ''} ${recipe?.description || ''}`.toLowerCase()
+  const nonVegKeywords = ['non-veg', 'chicken', 'mutton', 'fish', 'egg', 'prawn', 'shrimp']
+  if (nonVegKeywords.some((keyword) => text.includes(keyword))) {
+    return 'non-veg'
+  }
+  return 'veg'
+}
+
 function withDeterministicIds(recipes: any[], diet?: string | null) {
   return recipes.map((recipe) => ({
     ...recipe,
     id: buildDeterministicRecipeId(recipe.title, diet || undefined),
+    diet_type: diet === 'veg' || diet === 'non-veg' ? diet : inferDietType(recipe),
   }))
 }
 
@@ -44,16 +56,19 @@ export async function GET(request: Request) {
     const cacheQueryKey = hasIngredientFilter
       ? `${normalizedQuery} | ingredients:${normalizedIngredientKey}`
       : normalizedQuery
-    const dietFilter = diet || 'veg'
+    const dietFilter = diet ?? null
 
     // 1. Try to get popular recipes from database first
     if (usePopular && !hasIngredientFilter) {
-      const { data: popularRecipes, error: popularError } = await supabaseAdmin
+      let popularQuery = supabaseAdmin
         .from('popular_recipes')
         .select('*')
         .ilike('title', `%${query}%`)
-        .eq('diet_type', dietFilter)
         .limit(count)
+      if (dietFilter) {
+        popularQuery = popularQuery.eq('diet_type', dietFilter)
+      }
+      const { data: popularRecipes, error: popularError } = await popularQuery
 
       if (!popularError && popularRecipes && popularRecipes.length >= count) {
         const searchQueryId = await logSearch(
@@ -75,15 +90,17 @@ export async function GET(request: Request) {
 
     // 2. Shared cache: only use if it has enough recipes for the requested count
     if (usePopular) {
-      const { data: sharedCache, error: sharedCacheError } = await supabaseAdmin
+      let sharedCacheQuery = supabaseAdmin
         .from('search_queries')
         .select('recipes_generated')
         .eq('query_text', cacheQueryKey)
-        .eq('diet_filter', dietFilter)
         .not('recipes_generated', 'is', null)
         .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle()
+      sharedCacheQuery = dietFilter
+        ? sharedCacheQuery.eq('diet_filter', dietFilter)
+        : sharedCacheQuery.is('diet_filter', null)
+      const { data: sharedCache, error: sharedCacheError } = await sharedCacheQuery.maybeSingle()
 
       const cachedRecipes = sharedCache?.recipes_generated
       console.log(`[search] shared cache has ${Array.isArray(cachedRecipes) ? cachedRecipes.length : 0} recipes, need ${count}`)
@@ -107,23 +124,29 @@ export async function GET(request: Request) {
 
       // If cache exists but has too few recipes, purge it so next request regenerates
       if (!sharedCacheError && Array.isArray(cachedRecipes) && cachedRecipes.length > 0 && cachedRecipes.length < count) {
-        await supabaseAdmin
+        let staleCacheQuery = supabaseAdmin
           .from('search_queries')
           .update({ recipes_generated: null })
           .eq('query_text', cacheQueryKey)
-          .eq('diet_filter', dietFilter)
+        staleCacheQuery = dietFilter
+          ? staleCacheQuery.eq('diet_filter', dietFilter)
+          : staleCacheQuery.is('diet_filter', null)
+        await staleCacheQuery
       }
     }
 
     // 3. Check for similar recipes in database
     if (!hasIngredientFilter) {
-      const { data: existingRecipes, error: existingError } = await supabaseAdmin
+      let existingRecipesQuery = supabaseAdmin
         .from('recipes')
         .select('*')
         .textSearch('title', query, { type: 'websearch' })
-        .eq('diet_type', dietFilter)
         .order('view_count', { ascending: false })
         .limit(count)
+      if (dietFilter) {
+        existingRecipesQuery = existingRecipesQuery.eq('diet_type', dietFilter)
+      }
+      const { data: existingRecipes, error: existingError } = await existingRecipesQuery
 
       if (!existingError && existingRecipes && existingRecipes.length >= count) {
         const searchQueryId = await logSearch(
@@ -153,7 +176,7 @@ export async function GET(request: Request) {
       ingredients
     )
     console.log(`[search] AI returned ${generatedRecipesRaw.length} recipes`)
-    const generatedRecipes = withDeterministicIds(generatedRecipesRaw, dietFilter)
+    const generatedRecipes = withDeterministicIds(generatedRecipesRaw, dietFilter || undefined)
     const responseTime = Date.now() - startTime
 
     // 5. Store generated recipes in database
@@ -163,7 +186,7 @@ export async function GET(request: Request) {
       description: recipe.description,
       time_minutes: parseInt(recipe.time.replace(/\D/g, '')) || null,
       calories: parseInt(recipe.calories.replace(/\D/g, '')) || null,
-      diet_type: dietFilter,
+      diet_type: dietFilter || null,
       image_prompt: recipe.image_prompt,
       gemini_model: aiRouter.textProviderName(),
       gemini_temperature: 0.4,

@@ -262,6 +262,7 @@ export interface Recipe {
     time: string;
     calories: string;
     image_prompt: string;
+    diet_type?: "veg" | "non-veg" | null;
 }
 
 export interface RecipeDetails {

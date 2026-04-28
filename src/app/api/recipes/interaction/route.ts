@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       .from('user_recipe_interactions')
       .insert({
         user_id: user.id,
-        recipe_id: recipeKey,
+        recipe_id: null,
         recipe_key: recipeKey,
         interaction_type: interactionType,
         source: source || 'unknown',

@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       .from('cooking_sessions')
       .insert({
         user_id: user.id,
-        recipe_id: recipeKey,
+        recipe_id: null,
         recipe_key: recipeKey,
         session_status: 'in_progress',
         original_steps_count: originalSteps.length,
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     // Log interaction
     await supabaseAdmin.from('user_recipe_interactions').insert({
       user_id: user.id,
-      recipe_id: recipeKey,
+      recipe_id: null,
       recipe_key: recipeKey,
       interaction_type: 'cook_started',
       source: 'cooking_page',
@@ -111,7 +111,7 @@ export async function PATCH(request: Request) {
 
         await supabaseAdmin.from('user_recipe_interactions').insert({
           user_id: user.id,
-          recipe_id: session.recipe_id,
+          recipe_id: null,
           recipe_key: session.recipe_key,
           interaction_type: 'completed',
           source: 'cooking_page',
