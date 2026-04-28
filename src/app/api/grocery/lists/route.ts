@@ -226,6 +226,7 @@ export async function DELETE(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const onlyCompleted = searchParams.get('completed') === 'true'
+    const recipeKey = searchParams.get('recipeKey')
 
     const { data: list } = await supabaseAdmin
       .from('shopping_lists')
@@ -236,7 +237,23 @@ export async function DELETE(request: Request) {
 
     if (!list) return NextResponse.json({ success: true })
 
-    if (onlyCompleted) {
+    if (recipeKey) {
+      // Remove all items from a specific recipe
+      await supabaseAdmin
+        .from('shopping_list_items')
+        .delete()
+        .eq('shopping_list_id', list.id)
+        .eq('recipe_key', recipeKey)
+      // Recalculate totals
+      const { count } = await supabaseAdmin
+        .from('shopping_list_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('shopping_list_id', list.id)
+      await supabaseAdmin
+        .from('shopping_lists')
+        .update({ total_items: count || 0, completed_items: 0 })
+        .eq('id', list.id)
+    } else if (onlyCompleted) {
       await supabaseAdmin
         .from('shopping_list_items')
         .delete()
