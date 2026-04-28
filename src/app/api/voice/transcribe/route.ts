@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || ''
-const GROQ_TEXT_MODEL = process.env.GROQ_TEXT_MODEL || 'qwen/qwen3-32b'
+// Use a fast non-reasoning model for extraction — reasoning models (qwen3, deepseek-r1) waste
+// tokens on <think> blocks which corrupts short max_tokens completions
+const EXTRACTION_MODEL = 'llama-3.1-8b-instant'
 
 // Groq Whisper supports these ISO 639-1 codes natively
 const SUPPORTED_LANGUAGES = new Set([
@@ -12,7 +14,7 @@ const SUPPORTED_LANGUAGES = new Set([
 async function transcribeWithWhisper(audioFile: File, language: string): Promise<string> {
   const groqForm = new FormData()
   groqForm.append('file', audioFile, 'recording.webm')
-  groqForm.append('model', 'whisper-large-v3-turbo')
+  groqForm.append('model', 'whisper-large-v3')
   groqForm.append('response_format', 'json')
   groqForm.append('temperature', '0')
   // Bias Whisper towards food terminology
@@ -45,9 +47,9 @@ async function extractFoodQuery(rawTranscript: string): Promise<string> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: GROQ_TEXT_MODEL,
+      model: EXTRACTION_MODEL,
       temperature: 0,
-      max_tokens: 30,
+      max_tokens: 40,
       messages: [
         {
           role: 'system',
