@@ -184,14 +184,9 @@ export async function GET(request: Request) {
         if (!fuzzyError && fuzzyHit && Array.isArray(fuzzyHit.recipes_generated)) {
           const recipes = withDeterministicIds(fuzzyHit.recipes_generated.slice(0, count), dietFilter)
           const searchQueryId = await logSearch({ ...baseLogOpts, count: recipes.length, recipes: null, responseTime: Date.now() - startTime, userId: authUser?.id ?? null })
-          const fuzzyMatchedQuery = fuzzyHit.query_text as string
-          const fuzzyWasDifferent = normalizeSearchText(fuzzyMatchedQuery) !== normalizeSearchText(rawQuery)
-          console.log(`[search] fuzzy cache hit: "${fuzzyMatchedQuery}" (score: ${(fuzzyHit.similarity_score as number)?.toFixed(2)}) for "${normalizedQuery}"`)
-          // Always show "Showing results for" banner when the fuzzy match is a different term
-          const fuzzyMeta = fuzzyWasDifferent
-            ? { correctedQuery: fuzzyMatchedQuery, originalQuery: rawQuery, suggestions: [] }
-            : (wasCorrected ? { correctedQuery, originalQuery: rawQuery, suggestions } : {})
-          return NextResponse.json({ recipes, source: 'fuzzy-cache', cached: true, searchQueryId, ...fuzzyMeta })
+          console.log(`[search] fuzzy cache hit: "${fuzzyHit.query_text}" (score: ${(fuzzyHit.similarity_score as number)?.toFixed(2)}) for "${normalizedQuery}"`)
+          // Use withMeta so banner only shows when step 0 spell-corrected the user's query
+          return NextResponse.json(withMeta({ recipes, source: 'fuzzy-cache', cached: true, searchQueryId }))
         }
       }
     }
