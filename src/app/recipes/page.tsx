@@ -182,9 +182,23 @@ function RecipesPageContent() {
         return () => observer.disconnect();
     }, [hasMore, handleLoadMore]);
 
-    const dietLabel = diet === "veg" ? "Vegetarian" : diet === "non-veg" ? "Non-Vegetarian" : "All";
-
     const SKELETON_COUNT = SKELETON_COUNT_INITIAL;
+
+    const DIET_CHIPS = [
+        { value: null, label: "All" },
+        { value: "veg", label: "Veg" },
+        { value: "non-veg", label: "Non-Veg" },
+    ] as const;
+
+    const handleDietChip = (value: string | null) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (value) {
+            params.set("diet", value);
+        } else {
+            params.delete("diet");
+        }
+        router.push(`/recipes?${params.toString()}`);
+    };
 
     return (
         <div className="min-h-screen bg-background-muted flex flex-col">
@@ -201,8 +215,6 @@ function RecipesPageContent() {
 
                     {query && (
                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background-muted rounded-full border border-border-gray/20 min-w-0 overflow-hidden">
-                            <span className="text-xs font-medium text-text-medium shrink-0">{dietLabel}</span>
-                            <span className="text-border-gray shrink-0">·</span>
                             <span className="text-xs font-semibold text-text-dark truncate">{query}</span>
                         </div>
                     )}
@@ -214,8 +226,27 @@ function RecipesPageContent() {
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border-gray/30 text-xs font-semibold text-text-medium hover:text-text-dark hover:border-border-gray/60 transition-colors shrink-0"
                     >
                         <User size={14} strokeWidth={2} />
-                        
                     </button>
+                </div>
+
+                {/* Diet filter chips */}
+                <div className="flex items-center gap-2 px-5 pb-3 pt-0">
+                    {DIET_CHIPS.map((chip) => {
+                        const isActive = (chip.value === null && !diet) || diet === chip.value;
+                        return (
+                            <button
+                                key={chip.label}
+                                onClick={() => handleDietChip(chip.value ?? null)}
+                                className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 shrink-0 ${
+                                    isActive
+                                        ? "bg-primary text-white border-primary shadow-sm"
+                                        : "bg-white text-text-medium border-border-gray/30 hover:border-primary/40 hover:text-text-dark"
+                                }`}
+                            >
+                                {chip.label}
+                            </button>
+                        );
+                    })}
                 </div>
             </header>
 
@@ -345,7 +376,14 @@ export default function RecipesPage() {
     return (
         <Suspense fallback={
             <div className="min-h-screen bg-background-muted flex flex-col">
-                <div className="w-full h-14 bg-white border-b border-border-gray/15" />
+                <div className="w-full bg-white border-b border-border-gray/15">
+                    <div className="h-14" />
+                    <div className="flex items-center gap-2 px-5 pb-3">
+                        {["All", "Veg", "Non-Veg"].map((l) => (
+                            <div key={l} className="px-4 py-1.5 rounded-full text-xs bg-background-muted animate-pulse w-16 h-7" />
+                        ))}
+                    </div>
+                </div>
                 <div className="w-full px-4 sm:px-6 py-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
