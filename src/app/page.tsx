@@ -5,6 +5,7 @@ import { ChefHat, Sparkles, Camera, Brain, Shield, Zap } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import InstallPWA from "@/components/InstallPWA";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -53,6 +54,7 @@ export default function LandingPage() {
             <h1 className="text-2xl font-bold text-primary">ChefQuest</h1>
           </div>
           <div className="flex items-center gap-4">
+            <InstallPWA />
             <Link
               href="/login"
               className="px-6 py-2.5 bg-primary text-white rounded-full font-semibold hover:bg-primary-dark transition-all active:scale-95"
