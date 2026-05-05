@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/lib/auth-supabase";
-import { ChefHat, Sparkles, Zap, Camera, Brain } from "lucide-react";
+import { ChefHat, Zap, Camera, Brain } from "lucide-react";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -39,19 +39,6 @@ export default function LoginPage() {
             }
         } catch (err) {
             setError("Failed to sign in with Google");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleDemoLogin = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            await authService.demoLogin();
-            router.push("/home");
-        } catch (err) {
-            setError("Failed to create demo account");
         } finally {
             setLoading(false);
         }
@@ -128,34 +115,6 @@ export default function LoginPage() {
                             <span>Continue with Google</span>
                         </button>
 
-                        {/* Divider */}
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-border-gray/30"></div>
-                            </div>
-                            <div className="relative flex justify-center text-sm">
-                                <span className="px-4 bg-white text-text-medium">OR</span>
-                            </div>
-                        </div>
-
-                        {/* Demo Login Button */}
-                        <button
-                            onClick={handleDemoLogin}
-                            disabled={loading}
-                            className="w-full py-4 bg-primary text-white rounded-2xl font-semibold hover:bg-primary-dark transition-all shadow-sm hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                            {loading ? (
-                                <>
-                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    <span>Signing in...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Sparkles size={20} strokeWidth={2} />
-                                    <span>Continue as Demo User</span>
-                                </>
-                            )}
-                        </button>
                     </div>
                 </div>
 
